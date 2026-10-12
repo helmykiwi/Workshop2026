@@ -13,5 +13,10 @@ service cloud.firestore {
       allow create: if request.auth != null && request.resource.data.buyerId == request.auth.uid;
       allow read, update: if request.auth != null && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
     }
+    match /groupBuys/{groupBuyId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+    }
   }
 }
