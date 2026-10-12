@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /listings/{listingId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasAll(['name','category','quantity','unit','location','status','createdAt']);
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','reservedBy','reservedAt']);
+    }
+  }
+}
