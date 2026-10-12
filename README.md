@@ -2,6 +2,8 @@
 
 Waste2Wealth AI marketplace for Malaysian SMEs. Businesses list surplus stock, by-products, near-expiry goods, or industrial waste; FoodLink ranks nearby matches and tracks circular-economy impact.
 
+Live demo: https://workshop2026-foodlink.web.app/
+
 ## Run locally
 
 ```bash
