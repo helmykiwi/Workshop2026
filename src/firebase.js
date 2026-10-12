@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 const firebaseConfig = {
   projectId: 'workshop2026-foodlink',
@@ -10,4 +11,6 @@ const firebaseConfig = {
   messagingSenderId: '109473462352'
 };
 
-export const db = getFirestore(initializeApp(firebaseConfig));
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
