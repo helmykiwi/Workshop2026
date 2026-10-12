@@ -24,3 +24,5 @@ main{max-width:1440px}.hero{min-height:650px;padding:85px 7vw 70px;grid-template
 .fab{border-radius:2px!important;background:#111!important;color:#fff!important;border:1px solid #fff!important;box-shadow:4px 4px 0 var(--green)!important}
 @media(max-width:1200px){header{margin-left:16px;margin-right:16px}.hero{margin-top:16px}}
 @media(max-width:720px){header{height:58px;margin:8px;top:8px;padding:0 13px}header nav{background:#f3f3f0;border-color:#111;height:62px}nav button{color:#333}nav button.active{background:#111;color:#fff}.hero{padding:55px 20px 35px;margin-top:8px;min-height:auto}.hero h1{font-size:52px}.orbit-card{height:330px;margin:-10px -5px;transform:scale(.86)}.stats{margin:0;grid-template-columns:1fr;padding:12px 20px}.market,.subpage{padding-top:60px}.grid{gap:12px}.photo{height:210px}.portal-card{background:#111}.account-menu{right:-6px}}
+html,body,#root{max-width:100%;overflow-x:hidden}
+@media(max-width:850px){.hero{grid-template-columns:1fr;padding-left:28px;padding-right:28px}.orbit-card{width:min(520px,100%);justify-self:center}header{margin-left:8px;margin-right:8px}}
