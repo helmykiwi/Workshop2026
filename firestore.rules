@@ -3,15 +3,41 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /listings/{listingId} {
       allow read: if true;
-      allow create: if request.auth != null && request.resource.data.sellerId == request.auth.uid;
-      allow update: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.sellerId == request.auth.uid
+        && request.resource.data.status == 'available';
+      allow update: if request.auth != null
+        && resource.data.status == 'available'
+        && request.resource.data.status == 'reserved'
+        && request.resource.data.reservedBy == request.auth.uid
+        && request.resource.data.reservedAt == request.time
+        && request.resource.data.sellerId == resource.data.sellerId
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['status', 'reservedBy', 'reservedAt'])
+        && getAfter(/databases/$(database)/documents/orders/$(listingId)).data.buyerId == request.auth.uid;
     }
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     match /orders/{orderId} {
-      allow create: if request.auth != null && request.resource.data.buyerId == request.auth.uid;
-      allow read, update: if request.auth != null && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
+      allow create: if request.auth != null
+        && orderId == request.resource.data.listingId
+        && request.resource.data.buyerId == request.auth.uid
+        && request.resource.data.status == 'reserved'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.keys().hasOnly([
+          'listingId', 'itemName', 'buyerId', 'buyerName', 'sellerId',
+          'sellerName', 'total', 'status', 'createdAt'
+        ])
+        && get(/databases/$(database)/documents/listings/$(orderId)).data.status == 'available'
+        && getAfter(/databases/$(database)/documents/listings/$(orderId)).data.status == 'reserved'
+        && getAfter(/databases/$(database)/documents/listings/$(orderId)).data.reservedBy == request.auth.uid
+        && request.resource.data.sellerId == get(/databases/$(database)/documents/listings/$(orderId)).data.sellerId
+        && request.resource.data.itemName == get(/databases/$(database)/documents/listings/$(orderId)).data.name
+        && request.resource.data.sellerName == get(/databases/$(database)/documents/listings/$(orderId)).data.business
+        && request.resource.data.total == get(/databases/$(database)/documents/listings/$(orderId)).data.price;
+      allow read: if request.auth != null
+        && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
     }
     match /groupBuys/{groupBuyId} {
       allow read: if request.auth != null;

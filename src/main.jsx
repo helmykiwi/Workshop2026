@@ -1,33 +1,1678 @@
-import React,{useEffect,useMemo,useState}from'react';
-import{createRoot}from'react-dom/client';
-import{addDoc,collection,doc,getDoc,onSnapshot,query,serverTimestamp,setDoc,updateDoc,where}from'firebase/firestore';
-import{GoogleAuthProvider,onAuthStateChanged,signInWithPopup,signOut}from'firebase/auth';
-import{ArrowRight,Bell,Boxes,Check,ChevronDown,Clock,Leaf,MapPin,Package,Plus,Search,Sparkles,Store,TrendingUp,Truck,UserRound,X}from'lucide-react';
-import{auth,db}from'./firebase';import'./styles.css';
-const products=[
- {id:'p1',name:'Arabica Coffee Grounds',category:'By-product',qty:42,unit:'kg',place:'Bangsar, Kuala Lumpur',km:2.1,price:0,seller:'Common Ground',reliability:98,stock:92,emoji:'☕',color:'#76523f'},
- {id:'p2',name:'Fresh Bread & Pastries',category:'Food surplus',qty:28,unit:'packs',place:'Petaling Jaya',km:4.7,price:40,seller:'Bread & Butter',reliability:96,stock:84,emoji:'🥐',color:'#bd8746'},
- {id:'p3',name:'Organic Vegetable Offcuts',category:'Raw material',qty:65,unit:'kg',place:'Subang Jaya',km:7.3,price:78,seller:'Green Bowl',reliability:94,stock:96,emoji:'🥬',color:'#55764e'},
- {id:'p4',name:'Used Cooking Oil',category:'Industrial waste',qty:120,unit:'L',place:'Shah Alam',km:11,price:96,seller:'Dapur Warisan',reliability:91,stock:88,emoji:'🫙',color:'#97843e'},
- {id:'p5',name:'Local Grade B Tomatoes',category:'Food surplus',qty:80,unit:'kg',place:'Cheras, Kuala Lumpur',km:6.4,price:120,seller:'Pasar Kita',reliability:97,stock:90,emoji:'🍅',color:'#a64f43'}];
-const cats=['Food surplus','Raw material','By-product','Industrial waste'],regions=['Kuala Lumpur','Petaling Jaya','Subang Jaya','Shah Alam','Cheras','Puchong'];
-const menu=[['Overview','home'],['Marketplace','market'],['Group Buy','group'],['Procurement','forecast'],['Savings','savings']];
-function App(){const[user,setUser]=useState(),[profile,setProfile]=useState(),[remote,setRemote]=useState([]),[toast,setToast]=useState(''),[busy,setBusy]=useState(false);const ping=x=>{setToast(x);setTimeout(()=>setToast(''),2600)};useEffect(()=>onAuthStateChanged(auth,async u=>{setUser(u);if(!u)return setProfile(null);let s=await getDoc(doc(db,'users',u.uid)),base={name:u.displayName||'FoodLink member',photoURL:u.photoURL||'',region:'Kuala Lumpur',category:'Food & Beverage',lookingFor:'vegetables, packaging, coffee supplies',email:u.email};let p=s.exists()?{...base,...s.data()}:base;setProfile(p);if(!s.exists())await setDoc(doc(db,'users',u.uid),{...p,createdAt:serverTimestamp()})}),[]);useEffect(()=>onSnapshot(query(collection(db,'listings')),s=>setRemote(s.docs.map(d=>({id:d.id,...d.data(),qty:d.data().quantity,place:d.data().location,seller:d.data().business,km:d.data().distance||3.2,emoji:'📦',color:'#777',reliability:95,stock:90}))),()=>{}),[]);async function login(){setBusy(true);try{await signInWithPopup(auth,new GoogleAuthProvider());ping('Welcome to FoodLink!')}catch(e){if(e.code!=='auth/popup-closed-by-user')ping('Google login belum available. Cuba refresh.')}finally{setBusy(false)}}let items=[...remote,...products];return user?<Dashboard {...{user,profile,setProfile,items,ping,toast}}/>:<Landing items={items} login={login} busy={busy} ping={ping} toast={toast}/>}
-const Brand=()=> <a className="brand">FOODLINK<sup>®</sup></a>;const Toast=({text})=><div className="toast"><Check/> {text}</div>;const money=n=>n==='Free'||+n===0?'Free':`RM ${String(n).replace(/^RM\s*/,'')}`;const score=(x,p)=>Math.min(99,75+Math.max(0,8-Math.round(x.km||4))+Math.round((x.reliability||90)/25)+((p?.lookingFor||'').toLowerCase().split(',').some(k=>(x.name+x.category).toLowerCase().includes(k.trim()))?8:0));
-function Landing({items,login,busy,ping,toast}){const[q,setQ]=useState(''),[authMode,setAuthMode]=useState();return <div>{toast&&<Toast text={toast}/>}<header className="public"><Brand/><nav><a href="#discover">Discover</a></nav><div className="guest-actions"><button className="plain-login" onClick={()=>setAuthMode('login')}>Log in</button><button className="black" onClick={()=>setAuthMode('signup')}>Sign up</button></div></header><section className="hero"><div><span className="eyebrow"><Sparkles/> LIVE SME PROCUREMENT NETWORK</span><h1>Buy better.<br/><u>Waste less.</u></h1><p>FoodLink helps real local businesses pool purchases, find reliable suppliers and reduce delivery costs in one simple marketplace.</p><div className="actions"><button className="black big" onClick={()=>setAuthMode('signup')}>Create account <ArrowRight/></button><a className="outline big" href="#discover">Explore marketplace</a></div><div className="proof"><b>284</b> active SMEs · <b>37</b> orders matched this week · <b>RM12,840</b> saved this month</div></div><div className="hero-demo"><small>LIVE GROUP BUY · COOKING OIL · KLANG VALLEY</small><div className="live-dot">LIVE</div><div className="route moving"><div className="hub"><Truck/><b>95 kg pooled</b><span>1 shared delivery</span></div>{[['Aina Bakery','30 kg'],['Green Bowl','40 kg'],['Kopi Kita','25 kg']].map((x,i)=><div className={'node n'+i} key={x[0]}><b>{x[0]}</b><span>{x[1]} confirmed</span></div>)}</div><div className="demo-total"><span>ORDER CONFIRMED · 12:42 PM</span><b>RM 152 saved</b><em>Maju Supply Co. · reliability 98%</em></div></div></section><section className="strip">{['SME starts a request','Nearby SMEs join','AI selects supplier','One delivery saves cost'].map((x,i)=><div key={x}><b>0{i+1}</b>{x}</div>)}</section><section className="how"><span className="eyebrow">HOW FOODLINK WORKS</span><h2>From need to delivery.</h2><div>{[['1','Tell us what you need','Start a group buy or buy an available surplus listing.'],['2','FoodLink finds neighbours','Businesses nearby that need the same item can join your order.'],['3','AI compares suppliers','Price, distance, available stock and reliability are ranked together.'],['4','Order and delivery combine','One supplier, one route and a clear saving for every participant.']].map(x=><article key={x[0]}><b>{x[0]}</b><h3>{x[1]}</h3><p>{x[2]}</p></article>)}</div></section><section className="page discover-page" id="discover"><div className="discover-copy"><Title eye="PUBLIC MARKETPLACE · UPDATED 2 MIN AGO" title="Explore available surplus." sub="A preview of active listings from businesses across Klang Valley. Create an account to see personalized distance and recommendations."/><SearchBox q={q} setQ={setQ}/></div><div className="market-status"><span><i/> 18 listings available now</span><span>7 sellers online</span><span>Last transaction 4 min ago</span></div><div className="cards public-cards">{items.filter(x=>(x.name+x.category).toLowerCase().includes(q.toLowerCase())).slice(0,4).map(x=><Card x={x} publicMode key={x.id} go={()=>setAuthMode('signup')}/>)}</div><div className="discover-cta"><div><b>Want listings matched to your business?</b><span>Set your region and supply needs after creating an account.</span></div><button className="black" onClick={()=>setAuthMode('signup')}>Create free account <ArrowRight/></button></div></section><footer><Brand/> Local supply. Less waste. Better margins.</footer>{authMode&&<AuthChoice mode={authMode} setMode={setAuthMode} close={()=>setAuthMode()} login={login} busy={busy}/>}</div>}
-function Dashboard({user,profile,setProfile,items,ping,toast}){const[view,setView]=useState('home'),[sell,setSell]=useState(false),[edit,setEdit]=useState(false),[notice,setNotice]=useState(false),[picked,setPicked]=useState();return <div>{toast&&<Toast text={toast}/>}<header className="apphead"><Brand/><nav>{menu.map(x=><button className={view===x[1]?'active':''} onClick={()=>setView(x[1])} key={x[1]}>{x[0]}</button>)}</nav><div className="headright"><button className="sell" onClick={()=>setSell(true)}><Plus/> Sell</button><button className="icon" onClick={()=>setNotice(!notice)}><Bell/><i/></button><button className="avatar" onClick={()=>setEdit(true)}>{profile?.photoURL?<img src={profile.photoURL}/>:<b>{(profile?.name||'FL').slice(0,2).toUpperCase()}</b>}<ChevronDown/></button>{notice&&<Notices region={profile?.region}/>}</div></header><main>{view==='home'&&<Overview profile={profile} items={items} move={setView} pick={setPicked}/>} {view==='market'&&<Market profile={profile} items={items} pick={setPicked}/>} {view==='group'&&<Group user={user} profile={profile} ping={ping}/>} {view==='forecast'&&<Forecast profile={profile}/>} {view==='savings'&&<Savings/>}</main>{sell&&<Sell close={()=>setSell(false)} {...{profile,user,ping}}/>}{edit&&<Profile close={()=>setEdit(false)} {...{profile,user,setProfile,ping}}/>}{picked&&<Buy x={picked} close={()=>setPicked()} {...{user,profile,ping}}/>}</div>}
-function Title({eye,title,sub}){return <div className="title"><span className="eyebrow">{eye}</span><h1>{title}</h1><p>{sub}</p></div>};function SearchBox({q,setQ}){return <label className="search"><Search/><input placeholder="Search anything…" value={q} onChange={e=>setQ(e.target.value)}/></label>}
-function Overview({profile,items,move,pick}){const[orders,setOrders]=useState([]),user=auth.currentUser;useEffect(()=>{if(!user)return;return onSnapshot(query(collection(db,'orders'),where('buyerId','==',user.uid)),s=>setOrders(s.docs.map(d=>d.data())),()=>{})},[user?.uid]);let rec=[...items].sort((a,b)=>score(b,profile)-score(a,profile)).slice(0,3),paid=orders.reduce((n,o)=>n+(Number(String(o.total||0).replace(/[^0-9.]/g,''))||0),0),saved=Math.round(paid*.15),trips=Math.max(0,orders.length-1),co2=(trips*7.2).toFixed(1);return <section className="page"><div className="welcome"><Title eye="SMART OVERVIEW" title={`Good morning, ${profile?.name?.split(' ')[0]||'there'}.`} sub={`Here’s what FoodLink found around ${profile?.region||'your region'}.`}/><div className="profile-chip"><span>{profile?.category}</span><b>Looking for</b><p>{profile?.lookingFor}</p></div></div><div className="metrics"><Metric icon={<TrendingUp/>} label="Your estimated savings" value={`RM ${saved}`} note={orders.length?`${orders.length} account transaction${orders.length>1?'s':''}`:'No transactions yet'}/><Metric icon={<Truck/>} label="Your trips avoided" value={String(trips)} note="From combined orders"/><Metric icon={<Leaf/>} label="Your CO₂e avoided" value={`${co2} kg`} note="Account estimate"/><Metric icon={<Boxes/>} label="Group buys nearby" value="3" note="Marketplace activity"/></div><div className="dashgrid"><div className="panel wide"><div className="paneltop"><Title eye="RECOMMENDED FOR YOU" title="Matched to your profile"/><button onClick={()=>move('market')}>See all →</button></div>{rec.map((x,i)=><button className="recommend" onClick={()=>pick(x)} key={x.id}><i>0{i+1}</i><span style={{background:x.color}}>{x.emoji}</span><p><b>{x.name}</b><small>{x.seller} · {x.km} km</small></p><strong>{score(x,profile)}%<small>match</small></strong></button>)}</div><div className="panel restock"><Clock/><span>NEXT RESTOCK</span><h2>Fresh produce</h2><b>in 4 days</b><p>Based on your recent demand.</p><button className="outline" onClick={()=>move('forecast')}>View forecast</button></div><div className="panel opportunity"><span>GROUP BUY</span><h2>Save 24% on cooking oil</h2><p>2 nearby SMEs are ordering the same supply.</p><progress value="72" max="100"/><button className="black" onClick={()=>move('group')}>Join group buy</button></div><div className="panel wide"><Title eye="NEARBY ACTIVITY" title={`New around ${profile?.region}`}/><div className="activity">🍅 <p><b>80 kg tomatoes listed</b><small>12 minutes ago · 6.4 km away</small></p><button onClick={()=>move('market')}>View</button></div><div className="activity">📦 <p><b>Packaging group buy is forming</b><small>3 SMEs joined · save up to RM210</small></p><button onClick={()=>move('group')}>Join</button></div></div></div></section>}
-function Market({profile,items,pick}){const[q,setQ]=useState(''),[cat,setCat]=useState('All');let shown=[...items].sort((a,b)=>score(b,profile)-score(a,profile)).filter(x=>(cat==='All'||x.category===cat)&&(x.name+x.place).toLowerCase().includes(q.toLowerCase()));return <section className="page"><Title eye="BUY / LOCAL SUPPLY" title="Marketplace" sub="Ranked by price, distance, stock and supplier reliability."/><SearchBox q={q} setQ={setQ}/><div className="filters">{['All',...cats].map(x=><button className={cat===x?'active':''} onClick={()=>setCat(x)} key={x}>{x}</button>)}</div><div className="cards">{shown.map(x=><Card x={x} key={x.id} fit={score(x,profile)} go={()=>pick(x)}/>)}</div></section>}
-function Group({user,profile,ping}){const[go,setGo]=useState(false),[open,setOpen]=useState(false),[f,setF]=useState({item:'Cooking oil',quantity:20,unit:'kg',deadline:'2026-10-18'});async function create(e){e.preventDefault();try{await addDoc(collection(db,'groupBuys'),{...f,quantity:+f.quantity,ownerId:user.uid,ownerName:profile.name,region:profile.region,status:'open',members:1,createdAt:serverTimestamp()});ping('Group buy started — nearby SMEs can now join.');setOpen(false)}catch{ping('Could not start the group buy.')}}return <section className="page"><div className="group-title"><Title eye="GROUP BUYING · 3 ACTIVE NEAR YOU" title="Buy together. Pay less." sub="Start a purchase request. Nearby SMEs join the same item, then FoodLink selects one supplier and one delivery route."/><button className="black big" onClick={()=>setOpen(true)}><Plus/> Start group buy</button></div><div className="explain-flow">{[['1','You request','Choose item, amount and deadline.'],['2','Others join','Nearby SMEs add their quantity.'],['3','AI combines','FoodLink ranks suitable suppliers.'],['4','Everyone saves','One bulk order and shared delivery.']].map(x=><article key={x[0]}><b>{x[0]}</b><h3>{x[1]}</h3><p>{x[2]}</p></article>)}</div><div className="live-order"><div><span className="live-label">LIVE GROUP · CLOSES IN 3H 18M</span><h2>Cooking oil for 3 Klang Valley SMEs</h2><p><b>Goal: 100 kg</b> · 95 kg confirmed · minimum reached</p></div><progress value="95" max="100"/><span>95% filled</span></div><div className="ordercards">{[['Aina Bakery','30 kg','Bangsar','Confirmed'],['Green Bowl','40 kg','Petaling Jaya','Confirmed'],['Kopi Kita','25 kg','TTDI','Confirmed']].map((x,i)=><article key={x[0]}><i>0{i+1}</i><Store/><h3>{x[0]}</h3><p>{x[1]} · {x[2]}</p><b>{x[3]}</b><small>Would cost RM {210-i*22} alone</small></article>)}</div><button className="optimize" onClick={()=>setGo(true)}><Sparkles/> {go?'Best plan ready':'Run AI optimization'} <ArrowRight/></button><div className={'result '+(go?'show':'')}><h2>FoodLink found the best shared purchase</h2><div className="route-result"><span><Store/><b>Maju Supply Co.</b><small>RM4.93/kg · 95 kg in stock · reliability 98%</small></span><strong>ONE SUPPLIER → ONE ROUTE</strong><span><Truck/><b>Delivery: Tue, 2–4 PM</b><small>Bangsar → PJ → TTDI</small></span></div><div className="compare">{[['Total paid','RM620','RM468','Save RM152'],['Per business','RM207 avg','RM156 avg','24.5% less'],['Delivery','3 vans','1 van','2 trips avoided'],['CO₂e','18.4 kg','7.1 kg','61% lower']].map(x=><div key={x[0]}><span>{x[0]}</span><s>{x[1]}</s><b>{x[2]}</b><em>{x[3]}</em></div>)}</div><p className="checks">✓ Stock verified　 ✓ Cheapest total cost　 ✓ Supplier reliability 98%　 ✓ All three stops fit one route</p></div>{open&&<Modal title="Start a group buy" close={()=>setOpen(false)}><form onSubmit={create}><p className="form-help">Tell FoodLink what your business needs. We’ll show the request to nearby SMEs looking for the same item.</p><label>Item needed<input required value={f.item} onChange={e=>setF({...f,item:e.target.value})}/></label><div className="formrow two"><label>Your quantity<input type="number" min="1" required value={f.quantity} onChange={e=>setF({...f,quantity:e.target.value})}/></label><label>Unit<select value={f.unit} onChange={e=>setF({...f,unit:e.target.value})}><option>kg</option><option>L</option><option>packs</option><option>units</option></select></label></div><label>Need it by<input type="date" required value={f.deadline} onChange={e=>setF({...f,deadline:e.target.value})}/></label><div className="group-summary"><b>Your request</b><span>{f.quantity} {f.unit} {f.item}</span><small>Visible to SMEs near {profile.region}. You can close it before supplier confirmation.</small></div><button className="black submit">Start and find nearby buyers <ArrowRight/></button></form></Modal>}</section>}
-function Forecast({profile}){return <section className="page"><Title eye="PREDICTIVE PROCUREMENT" title="Restock before you run out." sub="Forecasts based on your business profile and purchasing rhythm."/><div className="forecast">{[['🥬','Fresh produce','4 days',82],['📦','Packaging','9 days',61],['🫙','Cooking oil','14 days',38]].map((x,i)=><article key={x[1]}><i>0{i+1}</i><span>{x[0]}</span><h2>{x[1]}</h2><p>Predicted restock</p><b>{x[2]}</b><small>Confidence {x[3]}%</small><progress value={x[3]} max="100"/><button className="outline">Find suppliers</button></article>)}</div><div className="panel note"><Sparkles/><p><b>Why this forecast?</b><br/>FoodLink combines your {profile?.category} profile, seasonality and nearby demand. You can still search for anything anytime.</p></div></section>}
-function Savings(){const[orders,setOrders]=useState([]),[loading,setLoading]=useState(true);const user=auth.currentUser;useEffect(()=>{if(!user)return;return onSnapshot(query(collection(db,'orders'),where('buyerId','==',user.uid)),s=>{setOrders(s.docs.map(d=>({id:d.id,...d.data()})));setLoading(false)},()=>setLoading(false))},[user?.uid]);const paid=orders.reduce((n,o)=>n+(Number(String(o.total||0).replace(/[^0-9.]/g,''))||0),0),saved=Math.round(paid*.15),trips=Math.max(0,orders.length-1),co2=(trips*7.2).toFixed(1);const owner=user?.displayName||user?.email||'Your business';if(loading)return <section className="page"><Title eye="SAVINGS DASHBOARD" title="Calculating your savings…" sub="Reading transactions linked to this account."/></section>;if(!orders.length)return <section className="page"><Title eye={`SAVINGS FOR ${owner.toUpperCase()}`} title="No savings recorded yet." sub="This dashboard belongs only to your account. Savings appear after you reserve supplies or complete a group purchase."/><div className="empty-savings"><Boxes/><h2>Start your first transaction</h2><p>Reserve a marketplace listing or create a group buy. FoodLink will then calculate money, delivery trips and estimated CO₂e saved for this account.</p></div></section>;return <section className="page"><div className="owner-line"><span>ACCOUNT SAVINGS</span><b>{owner}</b><small>{user?.email}</small></div><Title eye="YOUR VERIFIED ACTIVITY" title="Your operations, made leaner." sub="Calculated only from purchases linked to this signed-in account."/><div className="savinghero"><span>TOTAL ESTIMATED SAVINGS · {orders.length} TRANSACTION{orders.length>1?'S':''}</span><b>RM {saved}</b><p>Estimated at 15% versus separate, non-optimized purchasing.</p><div className="bars">▂ ▃ ▄ ▅ ▆ █</div></div><div className="metrics three"><Metric icon={<Truck/>} label="Trips avoided" value={`${trips} trips`} note="From combined orders"/><Metric icon={<Leaf/>} label="CO₂e avoided" value={`${co2} kg`} note="Estimated from trips avoided"/><Metric icon={<Boxes/>} label="Value purchased" value={`RM ${paid}`} note={`${orders.length} account transaction${orders.length>1?'s':''}`}/></div><div className="panel table"><h2>Your recent transactions</h2>{orders.map(o=><div key={o.id}><b>{o.itemName}</b><strong>{money(o.total)}</strong><span>{o.status}</span><span>{o.sellerName}</span></div>)}</div></section>}
-function Card({x,fit,go,publicMode}){return <article className="card" onClick={go}><div className="pic" style={{background:`linear-gradient(135deg,${x.color},#111)`}}><span>{x.emoji}</span>{fit&&<b><Sparkles/> {fit}% fit</b>}</div><div className="cardbody"><i>{x.category}</i><h3>{x.name}</h3><p>{x.seller}</p><div><span><Package/> {x.qty} {x.unit}</span><span><MapPin/> {publicMode?(x.place||'Klang Valley'):`${x.km} km`}</span></div><footer><strong>{money(x.price)}</strong><button><ArrowRight/></button></footer></div></article>}
-function Metric({icon,label,value,note}){return <div className="metric"><span>{icon}</span><p>{label}</p><b>{value}</b><small>{note}</small></div>}
-function Modal({title,close,children}){return <div className="overlay" onMouseDown={e=>e.target===e.currentTarget&&close()}><div className="modal"><header><div><span>FOODLINK EXCHANGE</span><h2>{title}</h2></div><button onClick={close}><X/></button></header>{children}</div></div>}
-function AuthChoice({mode,setMode,close,login,busy}){return <Modal title={mode==='signup'?'Create your FoodLink account':'Welcome back'} close={close}><div className="auth-tabs"><button className={mode==='signup'?'active':''} onClick={()=>setMode('signup')}>Sign up</button><button className={mode==='login'?'active':''} onClick={()=>setMode('login')}>Log in</button></div><div className="auth-copy"><span>{mode==='signup'?'FOR NEW BUSINESSES':'FOR EXISTING MEMBERS'}</span><h3>{mode==='signup'?'Join the local supply network.':'Continue to your dashboard.'}</h3><p>{mode==='signup'?'Create one account to buy, sell and start group purchases. We’ll set up your business profile after sign-up.':'Use the same Google account you registered with.'}</p><button className="google-btn" onClick={login} disabled={busy}><b>G</b>{busy?'Opening Google…':mode==='signup'?'Sign up with Google':'Log in with Google'}<ArrowRight/></button><small>Google securely confirms your identity. FoodLink never receives your password.</small></div></Modal>}
-function Sell({close,profile,user,ping}){const[f,setF]=useState({name:'',category:cats[0],quantity:'',unit:'kg',location:profile?.region,price:40});async function submit(e){e.preventDefault();try{await addDoc(collection(db,'listings'),{...f,quantity:+f.quantity,price:+f.price,sellerId:user.uid,business:profile.name,status:'available',createdAt:serverTimestamp()});ping('Listing published.');close()}catch{ping('Could not save listing.')}}return <Modal title="List your surplus" close={close}><form onSubmit={submit}><label>What are you selling?<input required value={f.name} onChange={e=>setF({...f,name:e.target.value})}/></label><div className="formrow"><label>Category<select value={f.category} onChange={e=>setF({...f,category:e.target.value})}>{cats.map(x=><option key={x}>{x}</option>)}</select></label><label>Quantity<input required type="number" min="1" value={f.quantity} onChange={e=>setF({...f,quantity:e.target.value})}/></label><label>Unit<select value={f.unit} onChange={e=>setF({...f,unit:e.target.value})}><option>kg</option><option>L</option><option>packs</option></select></label></div><label>Pickup area<input value={f.location} onChange={e=>setF({...f,location:e.target.value})}/></label><label>Asking price <b className="price">{money(f.price)}</b><input className="range" type="range" min="0" max="500" step="5" value={f.price} onChange={e=>setF({...f,price:e.target.value})}/><div className="pricebox">RM <input type="number" min="0" max="500" value={f.price} onChange={e=>setF({...f,price:Math.min(500,Math.max(0,+e.target.value))})}/><small>Max RM500</small></div></label><button className="black submit">Publish listing <ArrowRight/></button></form></Modal>}
-function Profile({close,profile,user,setProfile,ping}){const[f,setF]=useState({...profile});function file(e){let a=e.target.files?.[0];if(!a)return;if(a.size>250000)return ping('Image must be below 250 KB.');let r=new FileReader;r.onload=()=>setF({...f,photoURL:r.result});r.readAsDataURL(a)}async function save(e){e.preventDefault();await setDoc(doc(db,'users',user.uid),{...f,updatedAt:serverTimestamp()},{merge:true});setProfile(f);ping('Profile updated — recommendations refreshed.');close()}return <Modal title="Customize profile" close={close}><form onSubmit={save}><div className="photoedit">{f.photoURL?<img src={f.photoURL}/>:<UserRound/>}<label>Change photo<input type="file" accept="image/*" onChange={file}/></label></div><label>Display name<input value={f.name} onChange={e=>setF({...f,name:e.target.value})}/></label><div className="formrow two"><label>Region<select value={f.region} onChange={e=>setF({...f,region:e.target.value})}>{regions.map(x=><option key={x}>{x}</option>)}</select></label><label>Business category<select value={f.category} onChange={e=>setF({...f,category:e.target.value})}>{['Food & Beverage','Retail','Agriculture','Manufacturing','Hospitality','Recycling','Other'].map(x=><option key={x}>{x}</option>)}</select></label></div><label>What are you looking for?<textarea value={f.lookingFor} onChange={e=>setF({...f,lookingFor:e.target.value})}/><small>Used only to highlight relevant products. Search stays open.</small></label><button className="black submit">Save profile <Check/></button><button type="button" className="logout" onClick={()=>signOut(auth)}>Log out</button></form></Modal>}
-function Buy({x,close,user,profile,ping}){async function reserve(){try{if(!x.id.startsWith('p'))await updateDoc(doc(db,'listings',x.id),{status:'reserved',reservedBy:user.uid});await addDoc(collection(db,'orders'),{listingId:x.id,itemName:x.name,buyerId:user.uid,buyerName:profile.name,sellerName:x.seller,total:x.price,status:'reserved',createdAt:serverTimestamp()});ping('Reserved — pickup details are ready.');close()}catch{ping('Could not reserve.')}}return <Modal title="Review smart match" close={close}><div className="buy"><div style={{background:x.color}}>{x.emoji}</div><span><Sparkles/> {score(x,profile)}% smart match</span><h2>{x.name}</h2><p>{x.qty} {x.unit} · {x.seller}</p><section>{[['Price',96],['Distance',Math.max(70,100-x.km*2)],['Stock',x.stock],['Reliability',x.reliability]].map(a=><b key={a[0]}>{a[0]} <strong>{Math.round(a[1])}</strong></b>)}</section><footer><span><MapPin/> {x.place}</span><b>{money(x.price)}</b></footer><button className="black submit" onClick={reserve}>Reserve supply <ArrowRight/></button></div></Modal>}
-function Notices({region}){return <div className="notices"><h3>Notifications</h3><article><i>NEW NEARBY</i><b>80 kg tomatoes near {region}</b><small>12 minutes ago · 6.4 km</small></article><article><i>GROUP BUY</i><b>Cooking oil group closes in 3h</b><small>Join to unlock 24% savings</small></article><article><i>FORECAST</i><b>Fresh produce restock soon</b><small>Predicted in 4 days</small></article></div>}
-createRoot(document.getElementById('root')).render(<App/>);
+import "@fontsource/manrope/400.css";
+import "@fontsource/manrope/600.css";
+import "@fontsource/manrope/800.css";
+import "@fontsource/ibm-plex-mono/400.css";
+import React, { useEffect, useMemo, useState } from "react";
+import { createRoot } from "react-dom/client";
+import {
+  addDoc,
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  query,
+  runTransaction,
+  serverTimestamp,
+  setDoc,
+  where,
+} from "firebase/firestore";
+import {
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+} from "firebase/auth";
+import {
+  ArrowRight,
+  Bell,
+  Box,
+  Boxes,
+  Building2,
+  Check,
+  ChevronDown,
+  CircleDollarSign,
+  Clock3,
+  Gauge,
+  Leaf,
+  LogOut,
+  MapPin,
+  Menu,
+  Package,
+  Plus,
+  Route,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Store,
+  TrendingDown,
+  Truck,
+  UserRound,
+  UsersRound,
+  X,
+} from "lucide-react";
+import { auth, db } from "./firebase";
+import "./styles.css";
+
+const seeded = [
+  {
+    id: "p1",
+    name: "Arabica coffee grounds",
+    category: "By-product",
+    qty: 42,
+    unit: "kg",
+    place: "Bangsar",
+    km: 2.1,
+    price: 0,
+    seller: "Common Ground",
+    reliability: 98,
+    tone: "coffee",
+    demo: true,
+  },
+  {
+    id: "p2",
+    name: "Fresh bread & pastries",
+    category: "Food surplus",
+    qty: 28,
+    unit: "packs",
+    place: "Petaling Jaya",
+    km: 4.7,
+    price: 40,
+    seller: "Bread & Butter",
+    reliability: 96,
+    tone: "bread",
+    demo: true,
+  },
+  {
+    id: "p3",
+    name: "Vegetable offcuts",
+    category: "Raw material",
+    qty: 65,
+    unit: "kg",
+    place: "Subang Jaya",
+    km: 7.3,
+    price: 78,
+    seller: "Green Bowl",
+    reliability: 94,
+    tone: "green",
+    demo: true,
+  },
+  {
+    id: "p4",
+    name: "Used cooking oil",
+    category: "Industrial waste",
+    qty: 120,
+    unit: "L",
+    place: "Shah Alam",
+    km: 11,
+    price: 96,
+    seller: "Dapur Warisan",
+    reliability: 91,
+    tone: "oil",
+    demo: true,
+  },
+  {
+    id: "p5",
+    name: "Grade B tomatoes",
+    category: "Food surplus",
+    qty: 80,
+    unit: "kg",
+    place: "Cheras",
+    km: 6.4,
+    price: 120,
+    seller: "Pasar Kita",
+    reliability: 97,
+    tone: "tomato",
+    demo: true,
+  },
+  {
+    id: "p6",
+    name: "Clean kraft cartons",
+    category: "Packaging",
+    qty: 240,
+    unit: "units",
+    place: "Puchong",
+    km: 9.1,
+    price: 55,
+    seller: "Parcel Lab",
+    reliability: 93,
+    tone: "paper",
+    demo: true,
+  },
+];
+const cats = [
+  "All",
+  "Food surplus",
+  "Raw material",
+  "By-product",
+  "Industrial waste",
+  "Packaging",
+];
+const regions = [
+  "Kuala Lumpur",
+  "Petaling Jaya",
+  "Subang Jaya",
+  "Shah Alam",
+  "Cheras",
+  "Puchong",
+];
+const nav = [
+  ["Command centre", "home", Gauge],
+  ["Exchange", "market", Store],
+  ["Group buys", "group", UsersRound],
+  ["Demand plan", "forecast", TrendingDown],
+  ["Impact ledger", "savings", Leaf],
+];
+const money = (v) =>
+  Number(v) === 0 ? "Free" : `RM ${Number(v || 0).toLocaleString("en-MY")}`;
+const fit = (x, p) =>
+  Math.min(
+    99,
+    75 +
+      Math.max(0, 8 - Math.round(x.km || 4)) +
+      Math.round((x.reliability || 90) / 25) +
+      (String(p?.lookingFor || "")
+        .toLowerCase()
+        .split(",")
+        .some(
+          (k) =>
+            k && `${x.name} ${x.category}`.toLowerCase().includes(k.trim()),
+        )
+        ? 8
+        : 0),
+  );
+
+function useMarketplace() {
+  const [remote, setRemote] = useState([]),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState("");
+  useEffect(
+    () =>
+      onSnapshot(
+        query(collection(db, "listings")),
+        (s) => {
+          setRemote(
+            s.docs.map((d) => {
+              const x = d.data();
+              return {
+                id: d.id,
+                ...x,
+                qty: x.quantity,
+                place: x.location,
+                seller: x.business,
+                km: x.distance || 3.2,
+                reliability: x.reliability || 95,
+                tone: x.category === "Food surplus" ? "tomato" : "green",
+                demo: false,
+              };
+            }),
+          );
+          setLoading(false);
+          setError("");
+        },
+        () => {
+          setLoading(false);
+          setError(
+            "Live inventory is temporarily unavailable. Showing the demo catalogue.",
+          );
+        },
+      ),
+    [],
+  );
+  return {
+    items: [...remote, ...seeded],
+    liveCount: remote.length,
+    loading,
+    error,
+  };
+}
+
+function App() {
+  const [user, setUser] = useState(),
+    [profile, setProfile] = useState(),
+    [authReady, setAuthReady] = useState(false),
+    [toast, setToast] = useState(""),
+    [busy, setBusy] = useState(false),
+    market = useMarketplace();
+  const ping = (t) => {
+    setToast(t);
+    clearTimeout(window.__toast);
+    window.__toast = setTimeout(() => setToast(""), 3200);
+  };
+  useEffect(
+    () =>
+      onAuthStateChanged(auth, async (u) => {
+        setUser(u || null);
+        setAuthReady(true);
+        if (!u) return setProfile(null);
+        const ref = doc(db, "users", u.uid),
+          s = await getDoc(ref),
+          base = {
+            name: u.displayName || "FoodLink member",
+            photoURL: u.photoURL || "",
+            region: "Kuala Lumpur",
+            category: "Food & Beverage",
+            lookingFor: "vegetables, packaging, coffee supplies",
+            email: u.email,
+          },
+          p = s.exists() ? { ...base, ...s.data() } : base;
+        setProfile(p);
+        if (!s.exists())
+          await setDoc(ref, { ...p, createdAt: serverTimestamp() });
+      }),
+    [],
+  );
+  async function login() {
+    setBusy(true);
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+      ping("Welcome to the network. Your command centre is ready.");
+    } catch (e) {
+      if (e.code !== "auth/popup-closed-by-user")
+        ping("Google sign-in could not be completed. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <>
+      {toast && <Toast text={toast} />}{" "}
+      {!authReady ? (
+        <main className="auth-loading" role="status" aria-live="polite">
+          <Brand />
+          <span>Preparing FoodLink…</span>
+        </main>
+      ) : user ? (
+        <Workspace {...{ user, profile, setProfile, market, ping }} />
+      ) : (
+        <Landing market={market} login={login} busy={busy} />
+      )}
+    </>
+  );
+}
+const Brand = ({ inverse = false, onClick, href = "#top" }) => (
+  <a
+    className={`brand ${inverse ? "inverse" : ""}`}
+    href={href}
+    onClick={onClick}
+    aria-label="FoodLink home"
+  >
+    <span>
+      <Route />
+    </span>
+    <b>FOODLINK</b>
+    <small>MY</small>
+  </a>
+);
+
+function Landing({ market, login, busy }) {
+  const [q, setQ] = useState(""),
+    [cat, setCat] = useState("All");
+  const shown = market.items.filter(
+    (x) =>
+      (cat === "All" || x.category === cat) &&
+      `${x.name} ${x.category} ${x.place}`
+        .toLowerCase()
+        .includes(q.toLowerCase()),
+  );
+  return (
+    <div className="site-shell" id="top">
+      <header className="public-header">
+        <Brand inverse />
+        <nav>
+          <a href="#exchange">Exchange</a>
+          <a href="#network">How it works</a>
+          <a href="#impact">Impact</a>
+        </nav>
+        <button className="button lime small" onClick={login} disabled={busy}>
+          {busy ? "Opening Google…" : "Enter network"} <ArrowRight />
+        </button>
+      </header>
+      <main>
+        <section className="hero">
+          <div className="hero-copy">
+            <div className="live-label">
+              <i /> Klang Valley exchange · illustrative demo
+            </div>
+            <h1>Turn today’s surplus into tomorrow’s supply.</h1>
+            <p>
+              FoodLink gives Malaysian SMEs one live place to source nearby
+              stock, pool demand and move usable surplus before value
+              disappears.
+            </p>
+            <div className="hero-actions">
+              <button className="button lime" onClick={login}>
+                Open your command centre <ArrowRight />
+              </button>
+              <a className="text-link" href="#exchange">
+                Browse the exchange <ArrowRight />
+              </a>
+            </div>
+            <dl className="hero-facts">
+              <div>
+                <dt>One network</dt>
+                <dd>Supply + surplus</dd>
+              </div>
+              <div>
+                <dt>Local first</dt>
+                <dd>Distance-ranked</dd>
+              </div>
+              <div>
+                <dt>Shared route</dt>
+                <dd>Fewer deliveries</dd>
+              </div>
+            </dl>
+          </div>
+          <DispatchBoard />
+        </section>
+        <section className="ticker">
+          {[
+            "LIST SURPLUS",
+            "MATCH NEARBY DEMAND",
+            "POOL PURCHASES",
+            "CONSOLIDATE DELIVERY",
+            "TRACK IMPACT",
+          ].map((x) => (
+            <span key={x}>{x}</span>
+          ))}
+        </section>
+        <section className="exchange-section" id="exchange">
+          <SectionTitle
+            title="A working exchange, not another directory."
+            text="Search what is available, see where it is, and act before the stock window closes."
+            side={
+              <div className="exchange-count">
+                <b>{market.liveCount}</b> live listings connected
+              </div>
+            }
+          />
+          <div className="exchange-toolbar">
+            <label className="search-field">
+              <Search />
+              <input
+                aria-label="Search the public exchange"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search item, category or area"
+              />
+            </label>
+            <Filters value={cat} set={setCat} />
+          </div>
+          {market.error && <div className="notice">{market.error}</div>}
+          <div className="listing-grid">
+            {shown.slice(0, 6).map((x, i) => (
+              <ListingCard
+                key={x.id}
+                item={x}
+                index={i}
+                action={login}
+                publicMode
+              />
+            ))}
+          </div>
+          {!shown.length && (
+            <Empty
+              icon={Search}
+              title="No matching stock"
+              text="Try another category or nearby area."
+            />
+          )}
+        </section>
+        <section className="network-section" id="network">
+          <div>
+            <h2>Every action moves through one shared operating loop.</h2>
+            <p>
+              FoodLink keeps sourcing, surplus, buying groups and impact in the
+              same record—so the network becomes more useful with every
+              transaction.
+            </p>
+            <button className="button ink" onClick={login}>
+              Set up your business profile <ArrowRight />
+            </button>
+          </div>
+          <ol>
+            {[
+              [
+                "Signal supply or demand",
+                "List surplus or tell the network what your business needs next.",
+              ],
+              [
+                "Rank the useful matches",
+                "Compare proximity, price, available stock and supplier reliability.",
+              ],
+              [
+                "Combine the route",
+                "Pool similar demand and consolidate delivery into a practical run.",
+              ],
+              [
+                "Keep the impact ledger",
+                "Turn account activity into understandable savings and trip estimates.",
+              ],
+            ].map((x, i) => (
+              <li key={x[0]}>
+                <span>0{i + 1}</span>
+                <div>
+                  <b>{x[0]}</b>
+                  <p>{x[1]}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+        <section className="impact-section" id="impact">
+          <div className="impact-word">
+            LESS
+            <br />
+            WASTE.
+          </div>
+          <div>
+            <Leaf />
+            <h2>
+              Circular economy becomes useful when it fits the purchasing day.
+            </h2>
+            <p>
+              No separate sustainability workflow. The impact follows the
+              transaction: supply reused, demand combined and routes avoided.
+            </p>
+          </div>
+        </section>
+      </main>
+      <footer className="public-footer">
+        <Brand inverse />
+        <p>Local supply. Less waste. Better margins.</p>
+        <button className="text-link light" onClick={login}>
+          Join the network <ArrowRight />
+        </button>
+      </footer>
+    </div>
+  );
+}
+
+function DispatchBoard() {
+  return (
+    <div className="dispatch">
+      <header>
+        <span>DISPATCH / KB-104</span>
+        <b>GROUP BUY ACTIVE</b>
+      </header>
+      <div className="dispatch-route">
+        <div className="supplier">
+          <Store />
+          <span>
+            <b>Maju Supply Co.</b>
+            <small>95 kg confirmed</small>
+          </span>
+        </div>
+        <div className="route-line">
+          <i>
+            <Truck />
+          </i>
+        </div>
+        <div className="stops">
+          {[
+            ["Bangsar", "30 kg"],
+            ["Petaling Jaya", "40 kg"],
+            ["TTDI", "25 kg"],
+          ].map((x, i) => (
+            <div key={x[0]}>
+              <em>0{i + 1}</em>
+              <span>
+                <b>{x[0]}</b>
+                <small>{x[1]}</small>
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="dispatch-summary">
+        <div>
+          <span>Combined order</span>
+          <b>RM 468</b>
+        </div>
+        <div>
+          <span>Estimated saving</span>
+          <b>RM 152</b>
+        </div>
+        <div>
+          <span>Delivery plan</span>
+          <b>1 route</b>
+        </div>
+      </div>
+      <p>
+        Illustrative scenario based on the product workflow—not a verified live
+        transaction.
+      </p>
+    </div>
+  );
+}
+
+function Workspace({ user, profile, setProfile, market, ping }) {
+  const [view, setView] = useState("home"),
+    [menu, setMenu] = useState(false),
+    [notice, setNotice] = useState(false),
+    [panel, setPanel] = useState(),
+    [picked, setPicked] = useState();
+  const go = (v) => {
+    setView(v);
+    setMenu(false);
+    scrollTo({ top: 0, behavior: "smooth" });
+  };
+  return (
+    <div className="workspace">
+      <aside className={`sidebar ${menu ? "open" : ""}`}>
+        <div className="sidebar-head">
+          <Brand inverse href="#command-centre" onClick={() => go("home")} />
+          <button aria-label="Close navigation" className="icon-btn close-nav" onClick={() => setMenu(false)}>
+            <X />
+          </button>
+        </div>
+        <nav>
+          {nav.map(([label, id, Icon]) => (
+            <button
+              className={view === id ? "active" : ""}
+              onClick={() => go(id)}
+              key={id}
+            >
+              <Icon />
+              <span>{label}</span>
+              <i />
+            </button>
+          ))}
+        </nav>
+        <div className="network-signal">
+          <span>NETWORK SIGNAL</span>
+          <b>
+            {market.liveCount
+              ? "Live inventory connected"
+              : "Demo inventory active"}
+          </b>
+          <small>{market.liveCount} live listings in this project</small>
+        </div>
+        <button className="side-profile" onClick={() => setPanel("profile")}>
+          <Avatar profile={profile} />
+          <span>
+            <b>{profile?.name || "Loading…"}</b>
+            <small>{profile?.category}</small>
+          </span>
+          <ChevronDown />
+        </button>
+      </aside>
+      {menu && <button aria-label="Close navigation" className="scrim" onClick={() => setMenu(false)} />}
+      <div className="workspace-main">
+        <header className="workspace-header">
+          <button
+            aria-label="Open navigation"
+            className="icon-btn mobile-menu"
+            onClick={() => setMenu(true)}
+          >
+            <Menu />
+          </button>
+          <div>
+            <span>FOODLINK OPERATIONS</span>
+            <b>{nav.find((x) => x[1] === view)?.[0]}</b>
+          </div>
+          <section>
+            <button
+              className="button ink small"
+              onClick={() => setPanel("sell")}
+            >
+              <Plus /> List surplus
+            </button>
+            <button
+              aria-label="Network signals"
+              aria-expanded={notice}
+              className="icon-btn notification"
+              onClick={() => setNotice(!notice)}
+            >
+              <Bell />
+              <i />
+            </button>
+            <button
+              aria-label="Open business profile"
+              className="avatar-button"
+              onClick={() => setPanel("profile")}
+            >
+              <Avatar profile={profile} />
+            </button>
+          </section>
+          {notice && (
+            <Notifications
+              region={profile?.region}
+              close={() => setNotice(false)}
+            />
+          )}
+        </header>
+        {market.error && <div className="workspace-notice">{market.error}</div>}
+        {view === "home" && (
+          <Command {...{ user, profile, items: market.items, go, setPicked }} />
+        )}
+        {view === "market" && (
+          <Exchange
+            {...{
+              profile,
+              items: market.items,
+              loading: market.loading,
+              setPicked,
+            }}
+          />
+        )}
+        {view === "group" && <GroupBuys {...{ user, profile, ping }} />}
+        {view === "forecast" && (
+          <Demand {...{ profile, items: market.items, go }} />
+        )}
+        {view === "savings" && <Ledger user={user} />}
+      </div>
+      {panel === "sell" && (
+        <Drawer
+          title="List surplus"
+          sub="Publish usable stock to the exchange"
+          close={() => setPanel()}
+        >
+          <Sell {...{ user, profile, ping }} close={() => setPanel()} />
+        </Drawer>
+      )}
+      {panel === "profile" && (
+        <Drawer
+          title="Business profile"
+          sub="Tune matching and account details"
+          close={() => setPanel()}
+        >
+          <Profile
+            {...{ user, profile, setProfile, ping }}
+            close={() => setPanel()}
+          />
+        </Drawer>
+      )}
+      {picked && (
+        <Drawer
+          title="Reserve supply"
+          sub="Review listing and match quality"
+          close={() => setPicked()}
+        >
+          <Reserve
+            item={picked}
+            {...{ user, profile, ping }}
+            close={() => setPicked()}
+          />
+        </Drawer>
+      )}
+    </div>
+  );
+}
+
+const PageHead = ({ title, text, action }) => (
+  <div className="page-head">
+    <div>
+      <h1>{title}</h1>
+      <p>{text}</p>
+    </div>
+    {action}
+  </div>
+);
+function Command({ user, profile, items, go, setPicked }) {
+  const [orders, setOrders] = useState([]);
+  useEffect(
+    () =>
+      user
+        ? onSnapshot(
+            query(collection(db, "orders"), where("buyerId", "==", user.uid)),
+            (s) => setOrders(s.docs.map((d) => d.data())),
+            () => {},
+          )
+        : undefined,
+    [user],
+  );
+  const rec = useMemo(
+      () =>
+        [...items]
+          .filter((x) => x.status !== "reserved")
+          .sort((a, b) => fit(b, profile) - fit(a, profile))
+          .slice(0, 4),
+      [items, profile],
+    ),
+    spend = orders.reduce((n, o) => n + Number(o.total || 0), 0),
+    trips = Math.max(0, orders.length - 1);
+  return (
+    <main className="workspace-page">
+      <PageHead
+        title={`Good morning, ${profile?.name?.split(" ")[0] || "operator"}.`}
+        text={`Your network pulse for ${profile?.region || "Klang Valley"}—inventory, pooled demand and next actions.`}
+        action={
+          <button className="button ghost" onClick={() => go("market")}>
+            Open exchange <ArrowRight />
+          </button>
+        }
+      />
+      <div className="metric-strip">
+        <Metric
+          icon={CircleDollarSign}
+          label="Estimated savings"
+          value={money(Math.round(spend * 0.15))}
+          note={`${orders.length} account transactions`}
+        />
+        <Metric
+          icon={Route}
+          label="Trips consolidated"
+          value={trips}
+          note="Estimated activity"
+        />
+        <Metric
+          icon={Leaf}
+          label="CO₂e avoided"
+          value={`${(trips * 7.2).toFixed(1)} kg`}
+          note="Illustrative estimate"
+        />
+        <Metric
+          icon={Boxes}
+          label="Matched inventory"
+          value={rec.length}
+          note="Ready for review"
+        />
+      </div>
+      <section className="command-grid">
+        <div className="panel wide">
+          <PanelHead
+            title="Priority matches"
+            text="Ranked against your profile"
+            side="ILLUSTRATIVE RANKING"
+          />
+          <div className="match-list">
+            {rec.map((x, i) => (
+              <button key={x.id} onClick={() => setPicked(x)}>
+                <span className={`swatch tone-${x.tone}`}>
+                  <Package />
+                </span>
+                <span>
+                  <small>
+                    {x.category} · {x.place}
+                  </small>
+                  <b>{x.name}</b>
+                  <em>{x.seller}</em>
+                </span>
+                <strong>
+                  {fit(x, profile)}%<small>FIT</small>
+                </strong>
+                <strong>
+                  {money(x.price)}
+                  <small>
+                    {x.qty} {x.unit}
+                  </small>
+                </strong>
+                <ArrowRight />
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="panel next-action">
+          <span className="chip">ACTION WINDOW</span>
+          <Clock3 />
+          <h2>Example: produce restock window in 4 days.</h2>
+          <p>Review nearby supply before your projected stock window closes.</p>
+          <button className="button lime" onClick={() => go("forecast")}>
+            Review demand plan <ArrowRight />
+          </button>
+        </div>
+        <div className="panel group-signal">
+          <PanelHead title="Pooling now" text="Illustrative route" />
+          <strong>95 / 100 kg</strong>
+          <Progress value={95} />
+          <h3>Cooking oil · Klang Valley</h3>
+          <p>Three SMEs, one proposed supplier, one route.</p>
+          <button className="text-link" onClick={() => go("group")}>
+            Open group buys <ArrowRight />
+          </button>
+        </div>
+        <div className="panel activity">
+          <PanelHead
+            title="Network activity"
+            text="Recent illustrative signals"
+            side="ILLUSTRATIVE FEED"
+          />
+          <ul>
+            <li>
+              <i />
+              <span>
+                <b>Tomatoes listed near Cheras</b>
+                <small>80 kg · example timing</small>
+              </span>
+            </li>
+            <li>
+              <i />
+              <span>
+                <b>Packaging pool gained a member</b>
+                <small>3 SMEs · estimated RM210 saving</small>
+              </span>
+            </li>
+            <li>
+              <i />
+              <span>
+                <b>Cooking oil route reached minimum</b>
+                <small>95 kg confirmed</small>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function Exchange({ profile, items, loading, setPicked }) {
+  const [q, setQ] = useState(""),
+    [cat, setCat] = useState("All"),
+    [sort, setSort] = useState("fit");
+  const shown = useMemo(
+    () =>
+      items
+        .filter(
+          (x) =>
+            x.status !== "reserved" &&
+            (cat === "All" || x.category === cat) &&
+            `${x.name} ${x.place} ${x.seller}`
+              .toLowerCase()
+              .includes(q.toLowerCase()),
+        )
+        .sort((a, b) =>
+          sort === "price"
+            ? a.price - b.price
+            : sort === "distance"
+              ? a.km - b.km
+              : fit(b, profile) - fit(a, profile),
+        ),
+    [items, cat, q, sort, profile],
+  );
+  return (
+    <main className="workspace-page">
+      <PageHead
+        title="Exchange"
+        text="Available surplus and local supply ranked for your operating profile."
+        action={
+          <div className="result-count">
+            <b>{shown.length}</b>
+            <span>results</span>
+          </div>
+        }
+      />
+      <div className="exchange-controls">
+        <label className="search-field light-field">
+          <Search />
+          <input
+            aria-label="Search available supply"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Search supply, seller or location"
+          />
+        </label>
+        <label className="select-field">
+          <span>Sort</span>
+          <select value={sort} onChange={(e) => setSort(e.target.value)}>
+            <option value="fit">Best profile fit</option>
+            <option value="distance">Nearest first</option>
+            <option value="price">Lowest price</option>
+          </select>
+        </label>
+      </div>
+      <Filters value={cat} set={setCat} workspace />
+      {loading ? (
+        <Loading />
+      ) : (
+        <div className="listing-grid workspace-listings">
+          {shown.map((x, i) => (
+            <ListingCard
+              key={x.id}
+              item={x}
+              index={i}
+              score={fit(x, profile)}
+              action={() => setPicked(x)}
+            />
+          ))}
+        </div>
+      )}
+      {!loading && !shown.length && (
+        <Empty
+          icon={Search}
+          title="Nothing matches this filter"
+          text="Clear the category or try a broader search."
+        />
+      )}
+    </main>
+  );
+}
+
+function GroupBuys({ user, profile, ping }) {
+  const [groups, setGroups] = useState([]),
+    [open, setOpen] = useState(false),
+    [f, setF] = useState({
+      item: "Cooking oil",
+      quantity: 20,
+      unit: "kg",
+      deadline: "2026-11-15",
+    });
+  useEffect(
+    () =>
+      onSnapshot(
+        query(collection(db, "groupBuys")),
+        (s) => setGroups(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+        () => {},
+      ),
+    [],
+  );
+  async function create(e) {
+    e.preventDefault();
+    try {
+      await addDoc(collection(db, "groupBuys"), {
+        ...f,
+        quantity: +f.quantity,
+        ownerId: user.uid,
+        ownerName: profile.name,
+        region: profile.region,
+        status: "open",
+        members: 1,
+        createdAt: serverTimestamp(),
+      });
+      ping("Group buy published to nearby members.");
+      setOpen(false);
+    } catch {
+      ping("The group buy could not be published.");
+    }
+  }
+  return (
+    <main className="workspace-page">
+      <PageHead
+        title="Group buys"
+        text="Combine nearby demand into one stronger order and a simpler delivery route."
+        action={
+          <button className="button ink" onClick={() => setOpen(!open)}>
+            <Plus /> Start group buy
+          </button>
+        }
+      />
+      {open && (
+        <form className="inline-form" onSubmit={create}>
+          <PanelHead
+            title="New demand signal"
+            text="Tell nearby businesses what you need and when."
+          />
+          <div className="form-grid">
+            <Field label="Item needed">
+              <input
+                value={f.item}
+                onChange={(e) => setF({ ...f, item: e.target.value })}
+              />
+            </Field>
+            <Field label="Quantity">
+              <input
+                type="number"
+                min="1"
+                value={f.quantity}
+                onChange={(e) => setF({ ...f, quantity: e.target.value })}
+              />
+            </Field>
+            <Field label="Unit">
+              <select
+                value={f.unit}
+                onChange={(e) => setF({ ...f, unit: e.target.value })}
+              >
+                <option>kg</option>
+                <option>L</option>
+                <option>packs</option>
+              </select>
+            </Field>
+            <Field label="Need by">
+              <input
+                type="date"
+                value={f.deadline}
+                onChange={(e) => setF({ ...f, deadline: e.target.value })}
+              />
+            </Field>
+          </div>
+          <button className="button lime">
+            Publish demand signal <ArrowRight />
+          </button>
+        </form>
+      )}
+      <section className="group-route">
+        <div>
+          <span className="chip">ILLUSTRATIVE ROUTE</span>
+          <h2>Cooking oil · 3 businesses</h2>
+          <p>95 kg confirmed against a 100 kg target.</p>
+          <Progress value={95} />
+        </div>
+        <div className="route-nodes">
+          <div>
+            <Store />
+            <span>
+              <b>Maju Supply Co.</b>
+              <small>RM4.93 / kg</small>
+            </span>
+          </div>
+          {[
+            ["Aina Bakery", "30 kg · Bangsar"],
+            ["Green Bowl", "40 kg · Petaling Jaya"],
+            ["Kopi Kita", "25 kg · TTDI"],
+          ].map((x) => (
+            <div key={x[0]}>
+              <Building2 />
+              <span>
+                <b>{x[0]}</b>
+                <small>{x[1]}</small>
+              </span>
+            </div>
+          ))}
+        </div>
+        <footer>
+          <div>
+            <span>Standalone</span>
+            <s>RM 620</s>
+          </div>
+          <div>
+            <span>Combined</span>
+            <b>RM 468</b>
+          </div>
+          <div>
+            <span>Est. saving</span>
+            <strong>RM 152</strong>
+          </div>
+        </footer>
+      </section>
+      <section className="owned-groups">
+        <PanelHead
+          title="Live community signals"
+          text="Group buys stored in this project"
+          side={`${groups.length} TOTAL`}
+        />
+        {groups.length ? (
+          <div className="data-table">
+            {groups.map((g) => (
+              <div className="data-row" key={g.id}>
+                <span>
+                  <b>{g.item}</b>
+                  <small>{g.region}</small>
+                </span>
+                <span>
+                  {g.quantity} {g.unit}
+                </span>
+                <span>{g.members || 1} members</span>
+                <span className="chip soft">{g.status || "open"}</span>
+                <span>{g.deadline}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Empty
+            icon={UsersRound}
+            title="No live group buys yet"
+            text="Start the first demand signal."
+          />
+        )}
+      </section>
+    </main>
+  );
+}
+
+function Demand({ profile, items, go }) {
+  const plans = [
+    ["Fresh produce", Leaf, "4 days", 82],
+    ["Packaging", Box, "9 days", 61],
+    ["Cooking oil", Package, "14 days", 38],
+  ];
+  return (
+    <main className="workspace-page">
+      <PageHead
+        title="Demand plan"
+        text={`A practical restock view for ${profile?.category || "your business"}, using profile signals and nearby availability.`}
+      />
+      <div className="forecast-board">
+        {plans.map(([name, Icon, days, c]) => (
+          <article key={name}>
+            <Icon />
+            <span>RESTOCK WINDOW</span>
+            <h2>{name}</h2>
+            <b>{days}</b>
+            <Progress value={c} />
+            <small>{c}% illustrative confidence</small>
+            <button className="button ghost" onClick={() => go("market")}>
+              Find available supply <ArrowRight />
+            </button>
+          </article>
+        ))}
+      </div>
+      <div className="method-note">
+        <ShieldCheck />
+        <div>
+          <b>How this plan works</b>
+          <p>
+            This prototype uses your profile and exchange inventory. It does not
+            yet train on historical purchasing data.
+          </p>
+        </div>
+        <span>{items.length} inventory signals</span>
+      </div>
+    </main>
+  );
+}
+
+function Ledger({ user }) {
+  const [orders, setOrders] = useState([]),
+    [loading, setLoading] = useState(true);
+  useEffect(
+    () =>
+      user
+        ? onSnapshot(
+            query(collection(db, "orders"), where("buyerId", "==", user.uid)),
+            (s) => {
+              setOrders(s.docs.map((d) => ({ id: d.id, ...d.data() })));
+              setLoading(false);
+            },
+            () => setLoading(false),
+          )
+        : undefined,
+    [user],
+  );
+  const spend = orders.reduce((n, o) => n + Number(o.total || 0), 0),
+    trips = Math.max(0, orders.length - 1);
+  return (
+    <main className="workspace-page">
+      <PageHead
+        title="Impact ledger"
+        text="Account-linked activity translated into clear cost, route and emissions estimates."
+      />
+      {loading ? (
+        <Loading />
+      ) : orders.length ? (
+        <>
+          <section className="ledger-hero">
+            <div>
+              <span>ESTIMATED ACCOUNT SAVING</span>
+              <strong>{money(Math.round(spend * 0.15))}</strong>
+              <p>
+                Modelled at 15% against separate purchasing. This is an
+                estimate, not an audited claim.
+              </p>
+            </div>
+            <div>
+              <Route />
+              <b>{trips}</b>
+              <span>trips consolidated</span>
+            </div>
+          </section>
+          <div className="metric-strip three">
+            <Metric
+              icon={Leaf}
+              label="CO₂e avoided"
+              value={`${(trips * 7.2).toFixed(1)} kg`}
+              note="Route estimate"
+            />
+            <Metric
+              icon={CircleDollarSign}
+              label="Value reserved"
+              value={money(spend)}
+              note="Account orders"
+            />
+            <Metric
+              icon={Package}
+              label="Transactions"
+              value={orders.length}
+              note="Recorded in Firestore"
+            />
+          </div>
+          <div className="transaction-table">
+            <div className="data-row head">
+              <span>Item</span>
+              <span>Seller</span>
+              <span>Status</span>
+              <span>Total</span>
+            </div>
+            {orders.map((o) => (
+              <div className="data-row" key={o.id}>
+                <span>
+                  <b>{o.itemName}</b>
+                  <small>{o.listingId}</small>
+                </span>
+                <span>{o.sellerName}</span>
+                <span className="chip soft">{o.status}</span>
+                <b>{money(o.total)}</b>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : (
+        <Empty
+          icon={Leaf}
+          title="Your ledger starts with a transaction"
+          text="Reserve live inventory or create a group buy."
+        />
+      )}
+    </main>
+  );
+}
+
+function ListingCard({ item, index, score, action, publicMode }) {
+  return (
+    <article className="listing-card">
+      <button onClick={action}>
+        <div className={`listing-visual tone-${item.tone}`}>
+          <Package />
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          {item.demo && <small>DEMO</small>}
+        </div>
+        <div className="listing-body">
+          <span>{item.category}</span>
+          <h3>{item.name}</h3>
+          <p>{item.seller}</p>
+          <dl>
+            <div>
+              <dt>Quantity</dt>
+              <dd>
+                {item.qty} {item.unit}
+              </dd>
+            </div>
+            <div>
+              <dt>Pickup</dt>
+              <dd>{publicMode ? item.place : `${item.km} km`}</dd>
+            </div>
+          </dl>
+          <footer>
+            <strong>{money(item.price)}</strong>
+            {score ? (
+              <span>
+                <Sparkles /> {score}% fit
+              </span>
+            ) : (
+              <ArrowRight />
+            )}
+          </footer>
+        </div>
+      </button>
+    </article>
+  );
+}
+function Sell({ user, profile, ping, close }) {
+  const [f, setF] = useState({
+      name: "",
+      category: "Food surplus",
+      quantity: "",
+      unit: "kg",
+      location: profile?.region || "Kuala Lumpur",
+      price: 0,
+    }),
+    [saving, setSaving] = useState(false);
+  async function submit(e) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await addDoc(collection(db, "listings"), {
+        ...f,
+        quantity: +f.quantity,
+        price: +f.price,
+        sellerId: user.uid,
+        business: profile.name,
+        status: "available",
+        createdAt: serverTimestamp(),
+      });
+      ping("Listing published to the exchange.");
+      close();
+    } catch {
+      ping("The listing could not be published.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <form className="panel-form" onSubmit={submit}>
+      <Field label="What are you offering?">
+        <input
+          required
+          value={f.name}
+          onChange={(e) => setF({ ...f, name: e.target.value })}
+        />
+      </Field>
+      <Field label="Category">
+        <select
+          value={f.category}
+          onChange={(e) => setF({ ...f, category: e.target.value })}
+        >
+          {cats.slice(1).map((x) => (
+            <option key={x}>{x}</option>
+          ))}
+        </select>
+      </Field>
+      <div className="form-grid two">
+        <Field label="Quantity">
+          <input
+            required
+            type="number"
+            min="1"
+            value={f.quantity}
+            onChange={(e) => setF({ ...f, quantity: e.target.value })}
+          />
+        </Field>
+        <Field label="Unit">
+          <select
+            value={f.unit}
+            onChange={(e) => setF({ ...f, unit: e.target.value })}
+          >
+            <option>kg</option>
+            <option>L</option>
+            <option>packs</option>
+            <option>units</option>
+          </select>
+        </Field>
+      </div>
+      <Field label="Pickup area">
+        <input
+          value={f.location}
+          onChange={(e) => setF({ ...f, location: e.target.value })}
+        />
+      </Field>
+      <Field label="Price (RM)">
+        <input
+          type="number"
+          min="0"
+          value={f.price}
+          onChange={(e) => setF({ ...f, price: e.target.value })}
+        />
+      </Field>
+      <div className="form-note">
+        <ShieldCheck /> Your account remains the listing owner.
+      </div>
+      <button className="button lime full" disabled={saving}>
+        {saving ? "Publishing…" : "Publish listing"} <ArrowRight />
+      </button>
+    </form>
+  );
+}
+function Profile({ user, profile, setProfile, ping, close }) {
+  const [f, setF] = useState({ ...profile }),
+    [saving, setSaving] = useState(false);
+  async function save(e) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await setDoc(
+        doc(db, "users", user.uid),
+        { ...f, updatedAt: serverTimestamp() },
+        { merge: true },
+      );
+      setProfile(f);
+      ping("Business profile updated.");
+      close();
+    } catch {
+      ping("Profile could not be updated.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <form className="panel-form" onSubmit={save}>
+      <div className="profile-photo">
+        <Avatar profile={f} />
+      </div>
+      <Field label="Display name">
+        <input
+          value={f.name || ""}
+          onChange={(e) => setF({ ...f, name: e.target.value })}
+        />
+      </Field>
+      <Field label="Region">
+        <select
+          value={f.region || ""}
+          onChange={(e) => setF({ ...f, region: e.target.value })}
+        >
+          {regions.map((x) => (
+            <option key={x}>{x}</option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Business category">
+        <select
+          value={f.category || ""}
+          onChange={(e) => setF({ ...f, category: e.target.value })}
+        >
+          {[
+            "Food & Beverage",
+            "Retail",
+            "Agriculture",
+            "Manufacturing",
+            "Hospitality",
+            "Recycling",
+            "Other",
+          ].map((x) => (
+            <option key={x}>{x}</option>
+          ))}
+        </select>
+      </Field>
+      <Field label="What are you sourcing?">
+        <textarea
+          value={f.lookingFor || ""}
+          onChange={(e) => setF({ ...f, lookingFor: e.target.value })}
+        />
+      </Field>
+      <button className="button lime full" disabled={saving}>
+        {saving ? "Saving…" : "Save profile"} <Check />
+      </button>
+      <button type="button" className="logout" onClick={() => signOut(auth)}>
+        <LogOut /> Log out
+      </button>
+    </form>
+  );
+}
+function Reserve({ item, user, profile, ping, close }) {
+  const [saving, setSaving] = useState(false);
+  async function reserve() {
+    if (item.demo)
+      return ping("This demo listing cannot create a real transaction.");
+    setSaving(true);
+    try {
+      await runTransaction(db, async (t) => {
+        const ref = doc(db, "listings", item.id),
+          s = await t.get(ref);
+        if (!s.exists() || s.data().status !== "available")
+          throw Error("unavailable");
+        const live = s.data();
+        t.update(ref, {
+          status: "reserved",
+          reservedBy: user.uid,
+          reservedAt: serverTimestamp(),
+        });
+        t.set(doc(db, "orders", item.id), {
+          listingId: item.id,
+          itemName: live.name,
+          buyerId: user.uid,
+          buyerName: profile.name,
+          sellerId: live.sellerId,
+          sellerName: live.business,
+          total: +live.price || 0,
+          status: "reserved",
+          createdAt: serverTimestamp(),
+        });
+      });
+      ping("Supply reserved and added to your ledger.");
+      close();
+    } catch (e) {
+      ping(
+        e.message === "unavailable"
+          ? "This listing has already been reserved."
+          : "Reservation failed. Please try again.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <div className="reserve">
+      <div className={`reserve-visual tone-${item.tone}`}>
+        <Package />
+        <span>{item.category}</span>
+      </div>
+      <h2>{item.name}</h2>
+      <p>
+        {item.qty} {item.unit} from {item.seller}
+      </p>
+      <div className="match-breakdown">
+        <div>
+          <span>Price</span>
+          <b>{money(item.price)}</b>
+        </div>
+        <div>
+          <span>Distance</span>
+          <b>{item.km} km</b>
+        </div>
+        <div>
+          <span>Reliability</span>
+          <b>{item.reliability}%</b>
+        </div>
+        <div>
+          <span>Profile fit</span>
+          <b>{fit(item, profile)}%</b>
+        </div>
+      </div>
+      <div className="pickup">
+        <MapPin />
+        <span>
+          <b>Pickup area</b>
+          <small>{item.place}</small>
+        </span>
+      </div>
+      {item.demo && (
+        <div className="notice">
+          Seeded demo inventory cannot create a transaction.
+        </div>
+      )}
+      <button className="button lime full" onClick={reserve} disabled={saving}>
+        {saving ? "Reserving…" : item.demo ? "Demo listing" : "Reserve supply"}{" "}
+        <ArrowRight />
+      </button>
+    </div>
+  );
+}
+
+const SectionTitle = ({ title, text, side }) => (
+  <div className="section-title">
+    <div>
+      <h2>{title}</h2>
+      <p>{text}</p>
+    </div>
+    {side}
+  </div>
+);
+const PanelHead = ({ title, text, side }) => (
+  <div className="panel-head">
+    <div>
+      <h2>{title}</h2>
+      <p>{text}</p>
+    </div>
+    {side && <span>{side}</span>}
+  </div>
+);
+const Filters = ({ value, set, workspace = false }) => (
+  <div className={`filters ${workspace ? "workspace-filters" : ""}`}>
+    {cats.map((x) => (
+      <button
+        className={value === x ? "active" : ""}
+        onClick={() => set(x)}
+        key={x}
+      >
+        {x}
+      </button>
+    ))}
+  </div>
+);
+const Progress = ({ value }) => (
+  <div className="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={value}>
+    <span style={{ width: `${value}%` }} />
+  </div>
+);
+const Metric = ({ icon: Icon, label, value, note }) => (
+  <article className="metric">
+    <Icon />
+    <span>{label}</span>
+    <strong>{value}</strong>
+    <small>{note}</small>
+  </article>
+);
+const Field = ({ label, children }) => (
+  <label className="field">
+    <span>{label}</span>
+    {children}
+  </label>
+);
+const Avatar = ({ profile }) =>
+  profile?.photoURL ? (
+    <img className="avatar" src={profile.photoURL} alt="" />
+  ) : (
+    <span className="avatar fallback">
+      {(profile?.name || "FL").slice(0, 2).toUpperCase()}
+    </span>
+  );
+const Toast = ({ text }) => (
+  <div className="toast" role="status">
+    <Check />
+    {text}
+  </div>
+);
+const Empty = ({ icon: Icon, title, text }) => (
+  <div className="empty">
+    <Icon />
+    <h2>{title}</h2>
+    <p>{text}</p>
+  </div>
+);
+const Loading = () => (
+  <div className="loading" role="status" aria-label="Loading content">
+    <i />
+    <i />
+    <i />
+    <i />
+  </div>
+);
+function Drawer({ title, sub, close, children }) {
+  useEffect(() => {
+    const onKey = (event) => event.key === "Escape" && close();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [close]);
+  const titleId = `drawer-${title.toLowerCase().replaceAll(" ", "-")}`;
+  return (
+    <div
+      className="drawer-overlay"
+      onMouseDown={(e) => e.target === e.currentTarget && close()}
+    >
+      <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+        <header>
+          <div>
+            <span>{sub}</span>
+            <h2 id={titleId}>{title}</h2>
+          </div>
+          <button aria-label={`Close ${title}`} className="icon-btn" onClick={close}>
+            <X />
+          </button>
+        </header>
+        {children}
+      </aside>
+    </div>
+  );
+}
+function Notifications({ region, close }) {
+  return (
+    <div className="notifications" role="region" aria-label="Illustrative network signals">
+      <header>
+        <h2>Network signals</h2>
+        <button aria-label="Close network signals" className="icon-btn" onClick={close}>
+          <X />
+        </button>
+      </header>
+      {[
+        ["NEW NEARBY", `80 kg tomatoes near ${region}`],
+        ["GROUP BUY", "Cooking oil pool reached minimum"],
+        ["DEMAND PLAN", "Fresh produce restock window"],
+      ].map((x) => (
+        <div key={x[0]}>
+          <span>{x[0]}</span>
+          <b>{x[1]}</b>
+          <small>Illustrative signal</small>
+        </div>
+      ))}
+    </div>
+  );
+}
+createRoot(document.getElementById("root")).render(<App />);

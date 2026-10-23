@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "title": "FoodLink — Klang Valley Dispatch Ledger",
+  "northStar": "A professional circular-supply marketplace built like a live dispatch ledger for Malaysian SMEs.",
+  "colors": {
+    "ink": "#101710",
+    "deep": "#07110b",
+    "paper": "#f2f3ed",
+    "surface": "#fbfcf7",
+    "signal": "#d8ff45",
+    "line": "#cdd1c6",
+    "muted": "#667066",
+    "alert": "#e56549"
+  },
+  "typography": {
+    "display": "Manrope 800",
+    "body": "Manrope 400/600",
+    "metadata": "IBM Plex Mono 400"
+  },
+  "shape": {
+    "control": "8px",
+    "panel": "14px",
+    "pill": "999px"
+  },
+  "breakpoints": {
+    "compact": "690px",
+    "tablet": "1100px"
+  },
+  "principles": [
+    "Signal lime is reserved for action, active state and progress.",
+    "Working panels use borders and tone before shadow.",
+    "Demo and estimated data is always qualified.",
+    "Operational metadata uses the mono voice."
+  ]
+}
