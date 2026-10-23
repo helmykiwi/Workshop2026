@@ -468,8 +468,31 @@ svg {
   transform: translateY(-4px);
   border-color: #8b9388;
 }
-.listing-card-preview{cursor:default}
-.demo-action{cursor:default;pointer-events:none}.demo-action>span{font:9px 'IBM Plex Mono';padding:4px 6px;border:1px solid currentColor;border-radius:4px}.demo-link{cursor:default}.demo-link>span{font:10px 'IBM Plex Mono';font-weight:400;opacity:.72}.listing-preview-note{font:10px 'IBM Plex Mono';color:var(--muted)}
+.listing-card-preview {
+  cursor: default;
+}
+.demo-action {
+  cursor: default;
+  pointer-events: none;
+}
+.demo-action > span {
+  font: 9px "IBM Plex Mono";
+  padding: 4px 6px;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+}
+.demo-link {
+  cursor: default;
+}
+.demo-link > span {
+  font: 10px "IBM Plex Mono";
+  font-weight: 400;
+  opacity: 0.72;
+}
+.listing-preview-note {
+  font: 10px "IBM Plex Mono";
+  color: var(--muted);
+}
 .listing-visual {
   height: 190px;
   position: relative;
@@ -1760,7 +1783,11 @@ svg {
 /* Professional operations-led presentation overrides */
 .hero {
   background-color: var(--deep);
-  background-image: radial-gradient(circle at 75% 35%, #27372b 0, transparent 38%);
+  background-image: radial-gradient(
+    circle at 75% 35%,
+    #27372b 0,
+    transparent 38%
+  );
   min-height: 650px;
   grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
   gap: clamp(28px, 5vw, 76px);
@@ -1848,10 +1875,283 @@ svg {
     font-size: 13px;
   }
 }
-.auth-loading{min-height:100vh;display:grid;place-content:center;justify-items:center;gap:18px;background:var(--paper);color:var(--ink)}
-.auth-loading>span{font:11px 'IBM Plex Mono';color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.icon-btn,.avatar-button{min-width:44px;min-height:44px}
-.filters button{min-height:44px}
-@media(max-width:690px){.public-header .button{min-height:44px}.data-table,.transaction-table{overflow:visible}.data-row,.transaction-table .data-row{min-width:0;grid-template-columns:1fr 1fr;gap:10px}.data-row>span:first-child{grid-column:1/-1}.data-row.head{display:none}}
+.auth-loading {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 18px;
+  background: var(--paper);
+  color: var(--ink);
+}
+.auth-loading > span {
+  font: 11px "IBM Plex Mono";
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.icon-btn,
+.avatar-button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.filters button {
+  min-height: 44px;
+}
+@media (max-width: 690px) {
+  .public-header .button {
+    min-height: 44px;
+  }
+  .data-table,
+  .transaction-table {
+    overflow: visible;
+  }
+  .data-row,
+  .transaction-table .data-row {
+    min-width: 0;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .data-row > span:first-child {
+    grid-column: 1/-1;
+  }
+  .data-row.head {
+    display: none;
+  }
+}
 
-.auth-overlay{position:fixed;inset:0;z-index:120;background:#07110bd9;display:grid;place-items:center;padding:24px}.auth-card{position:relative;width:min(480px,100%);background:var(--paper);border:1px solid #3b463c;border-radius:var(--radius);padding:34px;box-shadow:0 32px 100px #0008}.auth-close{position:absolute;right:18px;top:18px}.auth-switch{display:grid;grid-template-columns:1fr 1fr;margin:36px 0 26px;border-bottom:1px solid var(--line)}.auth-switch button{border:0;background:transparent;padding:12px 8px;color:var(--muted);font-weight:800}.auth-switch button.active{color:var(--ink);border-bottom:2px solid var(--ink)}.auth-kicker,.onboarding-intro>span{font:10px 'IBM Plex Mono';letter-spacing:.1em;color:#64705f}.auth-card h1{font-size:42px;letter-spacing:-.06em;line-height:.96;margin:13px 0}.auth-card>p{line-height:1.6;color:var(--muted);margin:0 0 28px}.google-button{width:100%;min-height:54px;border:1px solid var(--ink);border-radius:8px;background:#fff;display:flex;align-items:center;justify-content:center;gap:12px;font-weight:800}.google-button:hover{background:#f6f8f2}.google-button svg{width:18px}.google-mark{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;color:#4285f4;font-weight:800;font-size:18px}.auth-card>small{display:block;text-align:center;margin-top:17px;color:var(--muted);font-size:11px}.onboarding-shell{min-height:100vh;background:var(--paper);padding:0 24px 56px}.onboarding-header{max-width:1060px;margin:auto;height:82px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.onboarding-header>span{font:10px 'IBM Plex Mono';color:var(--muted)}.onboarding-card{max-width:900px;margin:62px auto 0;background:var(--white);border:1px solid var(--line);border-radius:var(--radius);padding:clamp(24px,5vw,54px)}.onboarding-intro{max-width:650px}.onboarding-intro h1{font-size:clamp(38px,5vw,62px);letter-spacing:-.065em;line-height:.96;margin:13px 0}.onboarding-intro p{line-height:1.65;color:var(--muted);margin:0}.onboarding-photo{display:flex;align-items:center;gap:15px;background:#e6ebe0;border:1px solid #d2d9cb;border-radius:10px;padding:15px;margin:32px 0 24px}.onboarding-photo .avatar{width:54px;height:54px}.onboarding-photo div{display:grid;gap:3px}.onboarding-photo p{margin:0;font-size:12px;color:var(--muted)}.onboarding-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}.onboarding-wide{grid-column:1/-1}.onboarding-submit{margin-top:9px;width:100%}.form-error{padding:12px 14px;border:1px solid #e3aa9e;background:#fff0ec;color:#8d301e;border-radius:8px;font-size:12px;margin-bottom:15px}@media(max-width:640px){.auth-card{padding:25px}.auth-card h1{font-size:36px}.onboarding-shell{padding:0 14px 35px}.onboarding-header{height:68px}.onboarding-header>span{font-size:8px}.onboarding-card{margin-top:28px;padding:22px}.onboarding-grid{grid-template-columns:1fr}.onboarding-wide{grid-column:auto}}
+.auth-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: #07110bd9;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+.auth-card {
+  position: relative;
+  width: min(480px, 100%);
+  background: var(--paper);
+  border: 1px solid #3b463c;
+  border-radius: var(--radius);
+  padding: 34px;
+  box-shadow: 0 32px 100px #0008;
+}
+.auth-close {
+  position: absolute;
+  right: 18px;
+  top: 18px;
+}
+.auth-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 36px 0 26px;
+  border-bottom: 1px solid var(--line);
+}
+.auth-switch button {
+  border: 0;
+  background: transparent;
+  padding: 12px 8px;
+  color: var(--muted);
+  font-weight: 800;
+}
+.auth-switch button.active {
+  color: var(--ink);
+  border-bottom: 2px solid var(--ink);
+}
+.auth-kicker,
+.onboarding-intro > span {
+  font: 10px "IBM Plex Mono";
+  letter-spacing: 0.1em;
+  color: #64705f;
+}
+.auth-card h1 {
+  font-size: 42px;
+  letter-spacing: -0.06em;
+  line-height: 0.96;
+  margin: 13px 0;
+}
+.auth-card > p {
+  line-height: 1.6;
+  color: var(--muted);
+  margin: 0 0 28px;
+}
+.google-button {
+  width: 100%;
+  min-height: 54px;
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  font-weight: 800;
+}
+.google-button:hover {
+  background: #f6f8f2;
+}
+.google-button svg {
+  width: 18px;
+}
+.google-mark {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #4285f4;
+  font-weight: 800;
+  font-size: 18px;
+}
+.auth-card > small {
+  display: block;
+  text-align: center;
+  margin-top: 17px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.onboarding-shell {
+  min-height: 100vh;
+  background: var(--paper);
+  padding: 0 24px 56px;
+}
+.onboarding-header {
+  max-width: 1060px;
+  margin: auto;
+  height: 82px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.onboarding-header > span {
+  font: 10px "IBM Plex Mono";
+  color: var(--muted);
+}
+.onboarding-card {
+  max-width: 900px;
+  margin: 62px auto 0;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: clamp(24px, 5vw, 54px);
+}
+.onboarding-intro {
+  max-width: 650px;
+}
+.onboarding-intro h1 {
+  font-size: clamp(38px, 5vw, 62px);
+  letter-spacing: -0.065em;
+  line-height: 0.96;
+  margin: 13px 0;
+}
+.onboarding-intro p {
+  line-height: 1.65;
+  color: var(--muted);
+  margin: 0;
+}
+.onboarding-photo {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: #e6ebe0;
+  border: 1px solid #d2d9cb;
+  border-radius: 10px;
+  padding: 15px;
+  margin: 32px 0 24px;
+}
+.onboarding-photo .avatar {
+  width: 54px;
+  height: 54px;
+}
+.onboarding-photo div {
+  display: grid;
+  gap: 3px;
+}
+.onboarding-photo p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+.onboarding-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+.onboarding-wide {
+  grid-column: 1/-1;
+}
+.onboarding-submit {
+  margin-top: 9px;
+  width: 100%;
+}
+.form-error {
+  padding: 12px 14px;
+  border: 1px solid #e3aa9e;
+  background: #fff0ec;
+  color: #8d301e;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 15px;
+}
+@media (max-width: 640px) {
+  .auth-card {
+    padding: 25px;
+  }
+  .auth-card h1 {
+    font-size: 36px;
+  }
+  .onboarding-shell {
+    padding: 0 14px 35px;
+  }
+  .onboarding-header {
+    height: 68px;
+  }
+  .onboarding-header > span {
+    font-size: 8px;
+  }
+  .onboarding-card {
+    margin-top: 28px;
+    padding: 22px;
+  }
+  .onboarding-grid {
+    grid-template-columns: 1fr;
+  }
+  .onboarding-wide {
+    grid-column: auto;
+  }
+}
+.auth-methods {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.auth-methods button {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 800;
+}
+.auth-methods button.active {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+.manual-auth-form {
+  display: grid;
+  gap: 0;
+}
+.manual-auth-form .field {
+  margin-bottom: 12px;
+}
+.manual-auth-form .form-error {
+  margin: 0 0 12px;
+}
+.manual-auth-form .button {
+  margin-top: 2px;
+}

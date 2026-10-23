@@ -17,8 +17,10 @@ import {
   where,
 } from "firebase/firestore";
 import {
+  createUserWithEmailAndPassword,
   GoogleAuthProvider,
   onAuthStateChanged,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
 } from "firebase/auth";
@@ -288,6 +290,34 @@ function App() {
       setBusy(false);
     }
   }
+  async function emailAuth(email, password, isSignup) {
+    setBusy(true);
+    try {
+      if (isSignup) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      setAuthOpen(false);
+      return null;
+    } catch (error) {
+      if (error.code === "auth/email-already-in-use") {
+        return "That email already has an account. Try logging in instead.";
+      }
+      if (error.code === "auth/invalid-credential") {
+        return "That email or password does not match our records.";
+      }
+      if (error.code === "auth/weak-password") {
+        return "Use a password with at least 6 characters.";
+      }
+      if (error.code === "auth/operation-not-allowed") {
+        return "Email sign-up is not enabled yet. Please use Google for now.";
+      }
+      return "We could not continue with that email. Please try again.";
+    } finally {
+      setBusy(false);
+    }
+  }
   const openAuth = (mode = "login") => {
     setAuthMode(mode);
     setAuthOpen(true);
@@ -336,7 +366,8 @@ function App() {
         <AuthModal
           mode={authMode}
           setMode={setAuthMode}
-          login={login}
+          googleLogin={login}
+          emailAuth={emailAuth}
           busy={busy}
           close={() => setAuthOpen(false)}
         />
@@ -345,20 +376,48 @@ function App() {
   );
 }
 
-function AuthModal({ mode, setMode, login, busy, close }) {
+function AuthModal({ mode, setMode, googleLogin, emailAuth, busy, close }) {
   useEffect(() => {
     const onKey = (event) => event.key === "Escape" && close();
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [close]);
   const isSignup = mode === "signup";
+  const [method, setMethod] = useState("google"),
+    [email, setEmail] = useState(""),
+    [password, setPassword] = useState(""),
+    [confirmPassword, setConfirmPassword] = useState(""),
+    [error, setError] = useState("");
+  useEffect(() => {
+    setError("");
+    setPassword("");
+    setConfirmPassword("");
+  }, [mode, method]);
+  async function submitManual(event) {
+    event.preventDefault();
+    if (isSignup && password !== confirmPassword) {
+      setError("Your passwords do not match.");
+      return;
+    }
+    const message = await emailAuth(email, password, isSignup);
+    setError(message || "");
+  }
   return (
     <div
       className="auth-overlay"
       onMouseDown={(event) => event.target === event.currentTarget && close()}
     >
-      <section className="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
-        <button aria-label="Close sign in" className="icon-btn auth-close" onClick={close}>
+      <section
+        className="auth-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="auth-title"
+      >
+        <button
+          aria-label="Close sign in"
+          className="icon-btn auth-close"
+          onClick={close}
+        >
           <X />
         </button>
         <Brand />
@@ -386,17 +445,95 @@ function AuthModal({ mode, setMode, login, busy, close }) {
         </h1>
         <p>
           {isSignup
-            ? "Continue with Google, then tell the network what your business needs."
-            : "Continue with your Google account to open your command centre."}
+            ? "Choose Google or email, then tell the network what your business needs."
+            : "Use Google or your FoodLink email to open the command centre."}
         </p>
-        <button className="google-button" onClick={login} disabled={busy}>
-          <span className="google-mark">G</span>
-          {busy ? "Opening Google…" : "Continue with Google"}
-          <ArrowRight />
-        </button>
+        <div
+          className="auth-methods"
+          role="tablist"
+          aria-label="Sign-in method"
+        >
+          <button
+            role="tab"
+            aria-selected={method === "google"}
+            className={method === "google" ? "active" : ""}
+            onClick={() => setMethod("google")}
+          >
+            Google
+          </button>
+          <button
+            role="tab"
+            aria-selected={method === "manual"}
+            className={method === "manual" ? "active" : ""}
+            onClick={() => setMethod("manual")}
+          >
+            Email
+          </button>
+        </div>
+        {method === "google" ? (
+          <button
+            className="google-button"
+            onClick={googleLogin}
+            disabled={busy}
+          >
+            <span className="google-mark">G</span>
+            {busy ? "Opening Google…" : "Continue with Google"}
+            <ArrowRight />
+          </button>
+        ) : (
+          <form className="manual-auth-form" onSubmit={submitManual}>
+            <Field label="Email address">
+              <input
+                required
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="you@business.com"
+              />
+            </Field>
+            <Field label="Password">
+              <input
+                required
+                type="password"
+                minLength="6"
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="At least 6 characters"
+              />
+            </Field>
+            {isSignup && (
+              <Field label="Confirm password">
+                <input
+                  required
+                  type="password"
+                  minLength="6"
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  placeholder="Repeat your password"
+                />
+              </Field>
+            )}
+            {error && (
+              <div className="form-error" role="alert">
+                {error}
+              </div>
+            )}
+            <button className="button ink full" disabled={busy}>
+              {busy
+                ? "Checking details…"
+                : isSignup
+                  ? "Create with email"
+                  : "Log in with email"}{" "}
+              <ArrowRight />
+            </button>
+          </form>
+        )}
         <small>
           {isSignup
-            ? "We will ask for your business details after Google sign-up."
+            ? "After sign-up, we will ask for your business details."
             : "New to FoodLink? Choose Sign up above."}
         </small>
       </section>
@@ -457,7 +594,12 @@ function Onboarding({ user, profile, complete }) {
             <input required value={form.name} onChange={update("name")} />
           </Field>
           <Field label="Business name">
-            <input required value={form.businessName} onChange={update("businessName")} placeholder="e.g. Aina Bakery" />
+            <input
+              required
+              value={form.businessName}
+              onChange={update("businessName")}
+              placeholder="e.g. Aina Bakery"
+            />
           </Field>
           <Field label="Business type">
             <select value={form.category} onChange={update("category")}>
@@ -469,27 +611,52 @@ function Onboarding({ user, profile, complete }) {
                 "Hospitality",
                 "Recycling",
                 "Other",
-              ].map((item) => <option key={item}>{item}</option>)}
+              ].map((item) => (
+                <option key={item}>{item}</option>
+              ))}
             </select>
           </Field>
           <Field label="Operating area">
             <select value={form.region} onChange={update("region")}>
-              {regions.map((item) => <option key={item}>{item}</option>)}
+              {regions.map((item) => (
+                <option key={item}>{item}</option>
+              ))}
             </select>
           </Field>
           <Field label="Phone number">
-            <input required type="tel" inputMode="tel" value={form.phone} onChange={update("phone")} placeholder="e.g. 012-345 6789" />
+            <input
+              required
+              type="tel"
+              inputMode="tel"
+              value={form.phone}
+              onChange={update("phone")}
+              placeholder="e.g. 012-345 6789"
+            />
           </Field>
           <Field label="Profile photo URL (optional)">
-            <input type="url" value={form.photoURL} onChange={update("photoURL")} placeholder="Uses your Google photo by default" />
+            <input
+              type="url"
+              value={form.photoURL}
+              onChange={update("photoURL")}
+              placeholder="Uses your Google photo by default"
+            />
           </Field>
           <div className="onboarding-wide">
             <Field label="What supplies are you looking for?">
-              <textarea required value={form.lookingFor} onChange={update("lookingFor")} placeholder="e.g. fresh produce, packaging, cooking oil" />
+              <textarea
+                required
+                value={form.lookingFor}
+                onChange={update("lookingFor")}
+                placeholder="e.g. fresh produce, packaging, cooking oil"
+              />
             </Field>
           </div>
         </div>
-        {error && <div className="form-error" role="alert">{error}</div>}
+        {error && (
+          <div className="form-error" role="alert">
+            {error}
+          </div>
+        )}
         <button className="button lime onboarding-submit" disabled={saving}>
           {saving ? "Saving profile…" : "Enter FoodLink"} <ArrowRight />
         </button>
@@ -609,12 +776,7 @@ function Landing({ market, openAuth }) {
           {market.error && <div className="notice">{market.error}</div>}
           <div className="listing-grid">
             {shown.slice(0, 6).map((x, i) => (
-              <ListingCard
-                key={x.id}
-                item={x}
-                index={i}
-                publicMode
-              />
+              <ListingCard key={x.id} item={x} index={i} publicMode />
             ))}
           </div>
           {!shown.length && (
@@ -769,7 +931,11 @@ function Workspace({ user, profile, setProfile, market, ping }) {
       <aside className={`sidebar ${menu ? "open" : ""}`}>
         <div className="sidebar-head">
           <Brand inverse href="#command-centre" onClick={() => go("home")} />
-          <button aria-label="Close navigation" className="icon-btn close-nav" onClick={() => setMenu(false)}>
+          <button
+            aria-label="Close navigation"
+            className="icon-btn close-nav"
+            onClick={() => setMenu(false)}
+          >
             <X />
           </button>
         </div>
@@ -804,7 +970,13 @@ function Workspace({ user, profile, setProfile, market, ping }) {
           <ChevronDown />
         </button>
       </aside>
-      {menu && <button aria-label="Close navigation" className="scrim" onClick={() => setMenu(false)} />}
+      {menu && (
+        <button
+          aria-label="Close navigation"
+          className="scrim"
+          onClick={() => setMenu(false)}
+        />
+      )}
       <div className="workspace-main">
         <header className="workspace-header">
           <button
@@ -1796,7 +1968,13 @@ const Filters = ({ value, set, workspace = false }) => (
   </div>
 );
 const Progress = ({ value }) => (
-  <div className="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={value}>
+  <div
+    className="progress"
+    role="progressbar"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow={value}
+  >
     <span style={{ width: `${value}%` }} />
   </div>
 );
@@ -1855,13 +2033,22 @@ function Drawer({ title, sub, close, children }) {
       className="drawer-overlay"
       onMouseDown={(e) => e.target === e.currentTarget && close()}
     >
-      <aside className="drawer" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <aside
+        className="drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+      >
         <header>
           <div>
             <span>{sub}</span>
             <h2 id={titleId}>{title}</h2>
           </div>
-          <button aria-label={`Close ${title}`} className="icon-btn" onClick={close}>
+          <button
+            aria-label={`Close ${title}`}
+            className="icon-btn"
+            onClick={close}
+          >
             <X />
           </button>
         </header>
@@ -1872,10 +2059,18 @@ function Drawer({ title, sub, close, children }) {
 }
 function Notifications({ region, close }) {
   return (
-    <div className="notifications" role="region" aria-label="Illustrative network signals">
+    <div
+      className="notifications"
+      role="region"
+      aria-label="Illustrative network signals"
+    >
       <header>
         <h2>Network signals</h2>
-        <button aria-label="Close network signals" className="icon-btn" onClick={close}>
+        <button
+          aria-label="Close network signals"
+          className="icon-btn"
+          onClick={close}
+        >
           <X />
         </button>
       </header>
