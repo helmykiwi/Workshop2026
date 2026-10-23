@@ -61,92 +61,6 @@ import {
 import { auth, db, storage } from "./firebase";
 import "./styles.css";
 
-const seeded = [
-  {
-    id: "p1",
-    name: "Arabica coffee grounds",
-    category: "By-product",
-    qty: 42,
-    unit: "kg",
-    place: "Bangsar",
-    km: 2.1,
-    price: 0,
-    seller: "Common Ground",
-    reliability: 98,
-    tone: "coffee",
-    demo: true,
-  },
-  {
-    id: "p2",
-    name: "Fresh bread & pastries",
-    category: "Food surplus",
-    qty: 28,
-    unit: "packs",
-    place: "Petaling Jaya",
-    km: 4.7,
-    price: 40,
-    seller: "Bread & Butter",
-    reliability: 96,
-    tone: "bread",
-    demo: true,
-  },
-  {
-    id: "p3",
-    name: "Vegetable offcuts",
-    category: "Raw material",
-    qty: 65,
-    unit: "kg",
-    place: "Subang Jaya",
-    km: 7.3,
-    price: 78,
-    seller: "Green Bowl",
-    reliability: 94,
-    tone: "green",
-    demo: true,
-  },
-  {
-    id: "p4",
-    name: "Used cooking oil",
-    category: "Industrial waste",
-    qty: 120,
-    unit: "L",
-    place: "Shah Alam",
-    km: 11,
-    price: 96,
-    seller: "Dapur Warisan",
-    reliability: 91,
-    tone: "oil",
-    demo: true,
-  },
-  {
-    id: "p5",
-    name: "Grade B tomatoes",
-    category: "Food surplus",
-    qty: 80,
-    unit: "kg",
-    place: "Cheras",
-    km: 6.4,
-    price: 120,
-    seller: "Pasar Kita",
-    reliability: 97,
-    tone: "tomato",
-    demo: true,
-  },
-  {
-    id: "p6",
-    name: "Clean kraft cartons",
-    category: "Packaging",
-    qty: 240,
-    unit: "units",
-    place: "Puchong",
-    km: 9.1,
-    price: 55,
-    seller: "Parcel Lab",
-    reliability: 93,
-    tone: "paper",
-    demo: true,
-  },
-];
 const cats = [
   "All",
   "Food surplus",
@@ -249,7 +163,7 @@ function useMarketplace() {
     [],
   );
   return {
-    items: [...remote, ...seeded],
+    items: remote,
     liveCount: remote.length,
     loading,
     error,
@@ -1049,13 +963,13 @@ function Workspace({ user, profile, setProfile, market, ping }) {
           ))}
         </nav>
         <div className="network-signal">
-          <span>NETWORK SIGNAL</span>
-          <b>
+          <span>MARKETPLACE STATUS</span>
+          <b>{market.liveCount ? "Listings available" : "No listings yet"}</b>
+          <small>
             {market.liveCount
-              ? "Live inventory connected"
-              : "Demo inventory active"}
-          </b>
-          <small>{market.liveCount} live listings in this project</small>
+              ? `${market.liveCount} active listings`
+              : "Create the first listing to start browsing"}
+          </small>
         </div>
         <button className="side-profile" onClick={() => go("profile")}>
           <Avatar profile={profile} />
@@ -1225,33 +1139,41 @@ function Command({ user, profile, items, go, setPicked }) {
           <PanelHead
             title="Priority matches"
             text="Ranked against your profile"
-            side="ILLUSTRATIVE RANKING"
+            side="BEST FOR YOUR PROFILE"
           />
           <div className="match-list">
-            {rec.map((x, i) => (
-              <button key={x.id} onClick={() => setPicked(x)}>
-                <span className={`swatch tone-${x.tone}`}>
-                  <Package />
-                </span>
-                <span>
-                  <small>
-                    {x.category} · {x.place}
-                  </small>
-                  <b>{x.name}</b>
-                  <em>{x.seller}</em>
-                </span>
-                <strong>
-                  {fit(x, profile)}%<small>FIT</small>
-                </strong>
-                <strong>
-                  {money(x.price)}
-                  <small>
-                    {x.qty} {x.unit}
-                  </small>
-                </strong>
-                <ArrowRight />
-              </button>
-            ))}
+            {rec.length ? (
+              rec.map((x, i) => (
+                <button key={x.id} onClick={() => setPicked(x)}>
+                  <span className={`swatch tone-${x.tone}`}>
+                    <Package />
+                  </span>
+                  <span>
+                    <small>
+                      {x.category} · {x.place}
+                    </small>
+                    <b>{x.name}</b>
+                    <em>{x.seller}</em>
+                  </span>
+                  <strong>
+                    {fit(x, profile)}%<small>FIT</small>
+                  </strong>
+                  <strong>
+                    {money(x.price)}
+                    <small>
+                      {x.qty} {x.unit}
+                    </small>
+                  </strong>
+                  <ArrowRight />
+                </button>
+              ))
+            ) : (
+              <Empty
+                icon={Package}
+                title="No matches yet"
+                text="When businesses publish live listings, the best matches for your profile appear here."
+              />
+            )}
           </div>
         </div>
         <div className="panel next-action">
