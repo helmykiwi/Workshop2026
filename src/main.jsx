@@ -233,6 +233,9 @@ function App() {
   const [user, setUser] = useState(),
     [profile, setProfile] = useState(),
     [authReady, setAuthReady] = useState(false),
+    [authOpen, setAuthOpen] = useState(false),
+    [authMode, setAuthMode] = useState("login"),
+    [needsOnboarding, setNeedsOnboarding] = useState(false),
     [toast, setToast] = useState(""),
     [busy, setBusy] = useState(false),
     market = useMarketplace();
@@ -246,21 +249,30 @@ function App() {
       onAuthStateChanged(auth, async (u) => {
         setUser(u || null);
         setAuthReady(true);
-        if (!u) return setProfile(null);
-        const ref = doc(db, "users", u.uid),
-          s = await getDoc(ref),
-          base = {
-            name: u.displayName || "FoodLink member",
-            photoURL: u.photoURL || "",
-            region: "Kuala Lumpur",
-            category: "Food & Beverage",
-            lookingFor: "vegetables, packaging, coffee supplies",
-            email: u.email,
-          },
-          p = s.exists() ? { ...base, ...s.data() } : base;
-        setProfile(p);
-        if (!s.exists())
-          await setDoc(ref, { ...p, createdAt: serverTimestamp() });
+        if (!u) {
+          setProfile(null);
+          setNeedsOnboarding(false);
+          return;
+        }
+        try {
+          const ref = doc(db, "users", u.uid),
+            s = await getDoc(ref),
+            base = {
+              name: u.displayName || "FoodLink member",
+              photoURL: u.photoURL || "",
+              businessName: "",
+              region: "Kuala Lumpur",
+              category: "Food & Beverage",
+              phone: "",
+              lookingFor: "",
+              email: u.email || "",
+            },
+            p = s.exists() ? { ...base, ...s.data() } : base;
+          setProfile(p);
+          setNeedsOnboarding(!p.onboarded);
+        } catch {
+          ping("We could not load your profile. Please try again.");
+        }
       }),
     [],
   );
@@ -268,12 +280,37 @@ function App() {
     setBusy(true);
     try {
       await signInWithPopup(auth, new GoogleAuthProvider());
-      ping("Welcome to the network. Your command centre is ready.");
+      setAuthOpen(false);
     } catch (e) {
       if (e.code !== "auth/popup-closed-by-user")
         ping("Google sign-in could not be completed. Please try again.");
     } finally {
       setBusy(false);
+    }
+  }
+  const openAuth = (mode = "login") => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+  };
+  async function completeOnboarding(nextProfile) {
+    try {
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          ...nextProfile,
+          email: user.email || "",
+          onboarded: true,
+          createdAt: profile?.createdAt || serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+      setProfile(nextProfile);
+      setNeedsOnboarding(false);
+      ping("Your FoodLink business profile is ready.");
+    } catch {
+      ping("Your profile could not be saved. Please try again.");
+      throw Error("profile-save-failed");
     }
   }
   return (
@@ -284,14 +321,183 @@ function App() {
           <Brand />
           <span>Preparing FoodLink…</span>
         </main>
+      ) : user && needsOnboarding ? (
+        <Onboarding
+          user={user}
+          profile={profile}
+          complete={completeOnboarding}
+        />
       ) : user ? (
         <Workspace {...{ user, profile, setProfile, market, ping }} />
       ) : (
-        <Landing market={market} login={login} busy={busy} />
+        <Landing market={market} openAuth={openAuth} />
+      )}
+      {!user && authOpen && (
+        <AuthModal
+          mode={authMode}
+          setMode={setAuthMode}
+          login={login}
+          busy={busy}
+          close={() => setAuthOpen(false)}
+        />
       )}
     </>
   );
 }
+
+function AuthModal({ mode, setMode, login, busy, close }) {
+  useEffect(() => {
+    const onKey = (event) => event.key === "Escape" && close();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [close]);
+  const isSignup = mode === "signup";
+  return (
+    <div
+      className="auth-overlay"
+      onMouseDown={(event) => event.target === event.currentTarget && close()}
+    >
+      <section className="auth-card" role="dialog" aria-modal="true" aria-labelledby="auth-title">
+        <button aria-label="Close sign in" className="icon-btn auth-close" onClick={close}>
+          <X />
+        </button>
+        <Brand />
+        <div className="auth-switch" role="tablist" aria-label="Account action">
+          <button
+            role="tab"
+            aria-selected={!isSignup}
+            className={!isSignup ? "active" : ""}
+            onClick={() => setMode("login")}
+          >
+            Log in
+          </button>
+          <button
+            role="tab"
+            aria-selected={isSignup}
+            className={isSignup ? "active" : ""}
+            onClick={() => setMode("signup")}
+          >
+            Sign up
+          </button>
+        </div>
+        <span className="auth-kicker">FOODLINK NETWORK</span>
+        <h1 id="auth-title">
+          {isSignup ? "Build your business profile." : "Welcome back."}
+        </h1>
+        <p>
+          {isSignup
+            ? "Continue with Google, then tell the network what your business needs."
+            : "Continue with your Google account to open your command centre."}
+        </p>
+        <button className="google-button" onClick={login} disabled={busy}>
+          <span className="google-mark">G</span>
+          {busy ? "Opening Google…" : "Continue with Google"}
+          <ArrowRight />
+        </button>
+        <small>
+          {isSignup
+            ? "We will ask for your business details after Google sign-up."
+            : "New to FoodLink? Choose Sign up above."}
+        </small>
+      </section>
+    </div>
+  );
+}
+
+function Onboarding({ user, profile, complete }) {
+  const [form, setForm] = useState(() => ({
+      name: profile?.name || user.displayName || "",
+      businessName: profile?.businessName || "",
+      category: profile?.category || "Food & Beverage",
+      region: profile?.region || "Kuala Lumpur",
+      phone: profile?.phone || "",
+      lookingFor: profile?.lookingFor || "",
+      photoURL: profile?.photoURL || user.photoURL || "",
+    })),
+    [saving, setSaving] = useState(false),
+    [error, setError] = useState("");
+  const update = (key) => (event) =>
+    setForm((current) => ({ ...current, [key]: event.target.value }));
+  async function submit(event) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await complete(form);
+    } catch {
+      setError("We could not save your profile. Please try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <main className="onboarding-shell">
+      <header className="onboarding-header">
+        <Brand />
+        <span>SETUP / 01 OF 01</span>
+      </header>
+      <form className="onboarding-card" onSubmit={submit}>
+        <div className="onboarding-intro">
+          <span>YOUR BUSINESS PROFILE</span>
+          <h1>Tell the network what helps your business move.</h1>
+          <p>
+            These details help FoodLink surface nearby supply and relevant group
+            buys. You can edit them later.
+          </p>
+        </div>
+        <section className="onboarding-photo">
+          <Avatar profile={form} />
+          <div>
+            <b>Profile photo</b>
+            <p>We used the photo linked to your Google account.</p>
+          </div>
+        </section>
+        <div className="onboarding-grid">
+          <Field label="Your name">
+            <input required value={form.name} onChange={update("name")} />
+          </Field>
+          <Field label="Business name">
+            <input required value={form.businessName} onChange={update("businessName")} placeholder="e.g. Aina Bakery" />
+          </Field>
+          <Field label="Business type">
+            <select value={form.category} onChange={update("category")}>
+              {[
+                "Food & Beverage",
+                "Retail",
+                "Agriculture",
+                "Manufacturing",
+                "Hospitality",
+                "Recycling",
+                "Other",
+              ].map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </Field>
+          <Field label="Operating area">
+            <select value={form.region} onChange={update("region")}>
+              {regions.map((item) => <option key={item}>{item}</option>)}
+            </select>
+          </Field>
+          <Field label="Phone number">
+            <input required type="tel" inputMode="tel" value={form.phone} onChange={update("phone")} placeholder="e.g. 012-345 6789" />
+          </Field>
+          <Field label="Profile photo URL (optional)">
+            <input type="url" value={form.photoURL} onChange={update("photoURL")} placeholder="Uses your Google photo by default" />
+          </Field>
+          <div className="onboarding-wide">
+            <Field label="What supplies are you looking for?">
+              <textarea required value={form.lookingFor} onChange={update("lookingFor")} placeholder="e.g. fresh produce, packaging, cooking oil" />
+            </Field>
+          </div>
+        </div>
+        {error && <div className="form-error" role="alert">{error}</div>}
+        <button className="button lime onboarding-submit" disabled={saving}>
+          {saving ? "Saving profile…" : "Enter FoodLink"} <ArrowRight />
+        </button>
+      </form>
+    </main>
+  );
+}
+
 const Brand = ({ inverse = false, onClick, href = "#top" }) => (
   <a
     className={`brand ${inverse ? "inverse" : ""}`}
@@ -307,7 +513,7 @@ const Brand = ({ inverse = false, onClick, href = "#top" }) => (
   </a>
 );
 
-function Landing({ market, login, busy }) {
+function Landing({ market, openAuth }) {
   const [q, setQ] = useState(""),
     [cat, setCat] = useState("All");
   const shown = market.items.filter(
@@ -326,8 +532,8 @@ function Landing({ market, login, busy }) {
           <a href="#network">How it works</a>
           <a href="#impact">Impact</a>
         </nav>
-        <button className="button lime small" onClick={login} disabled={busy}>
-          {busy ? "Opening Google…" : "Enter network"} <ArrowRight />
+        <button className="button lime small" onClick={() => openAuth("login")}>
+          Enter network <ArrowRight />
         </button>
       </header>
       <main>
