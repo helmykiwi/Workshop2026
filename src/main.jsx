@@ -162,8 +162,11 @@ const nav = [
   ["Demand plan", "forecast", TrendingDown],
   ["Impact ledger", "savings", Leaf],
 ];
-const money = (v) =>
-  Number(v) === 0 ? "Free" : `RM ${Number(v || 0).toLocaleString("en-MY")}`;
+const money = (v) => {
+  const amount = Number(v);
+  if (!Number.isFinite(amount)) return "Price on request";
+  return amount === 0 ? "Free" : `RM ${amount.toLocaleString("en-MY")}`;
+};
 const fit = (x, p) =>
   Math.min(
     99,
@@ -340,9 +343,9 @@ function Landing({ market, login, busy }) {
               disappears.
             </p>
             <div className="hero-actions">
-              <button className="button lime" onClick={login}>
-                Open your command centre <ArrowRight />
-              </button>
+              <span className="button lime demo-action">
+                Command centre preview <span>DEMO</span>
+              </span>
               <a className="text-link" href="#exchange">
                 Browse the exchange <ArrowRight />
               </a>
@@ -404,7 +407,6 @@ function Landing({ market, login, busy }) {
                 key={x.id}
                 item={x}
                 index={i}
-                action={login}
                 publicMode
               />
             ))}
@@ -425,9 +427,9 @@ function Landing({ market, login, busy }) {
               same record—so the network becomes more useful with every
               transaction.
             </p>
-            <button className="button ink" onClick={login}>
-              Set up your business profile <ArrowRight />
-            </button>
+            <span className="button ink demo-action">
+              Business profile preview <span>DEMO</span>
+            </span>
           </div>
           <ol>
             {[
@@ -479,9 +481,9 @@ function Landing({ market, login, busy }) {
       <footer className="public-footer">
         <Brand inverse />
         <p>Local supply. Less waste. Better margins.</p>
-        <button className="text-link light" onClick={login}>
-          Join the network <ArrowRight />
-        </button>
+        <span className="text-link light demo-link">
+          Demo preview <span>· use Enter network to sign in</span>
+        </span>
       </footer>
     </div>
   );
@@ -1247,9 +1249,17 @@ function Ledger({ user }) {
 }
 
 function ListingCard({ item, index, score, action, publicMode }) {
+  const CardContent = publicMode ? "div" : "button";
   return (
     <article className="listing-card">
-      <button onClick={action}>
+      <CardContent
+        {...(publicMode
+          ? {
+              className: "listing-card-preview",
+              "aria-label": `${item.name} demo preview`,
+            }
+          : { type: "button", onClick: action })}
+      >
         <div className={`listing-visual tone-${item.tone}`}>
           <Package />
           <span>{String(index + 1).padStart(2, "0")}</span>
@@ -1273,7 +1283,9 @@ function ListingCard({ item, index, score, action, publicMode }) {
           </dl>
           <footer>
             <strong>{money(item.price)}</strong>
-            {score ? (
+            {publicMode ? (
+              <span className="listing-preview-note">Preview only</span>
+            ) : score ? (
               <span>
                 <Sparkles /> {score}% fit
               </span>
@@ -1282,7 +1294,7 @@ function ListingCard({ item, index, score, action, publicMode }) {
             )}
           </footer>
         </div>
-      </button>
+      </CardContent>
     </article>
   );
 }

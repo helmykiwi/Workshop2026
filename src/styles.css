@@ -450,7 +450,8 @@ svg {
 .listing-card {
   min-width: 0;
 }
-.listing-card > button {
+.listing-card > button,
+.listing-card > .listing-card-preview {
   width: 100%;
   height: 100%;
   text-align: left;
@@ -467,6 +468,8 @@ svg {
   transform: translateY(-4px);
   border-color: #8b9388;
 }
+.listing-card-preview{cursor:default}
+.demo-action{cursor:default;pointer-events:none}.demo-action>span{font:9px 'IBM Plex Mono';padding:4px 6px;border:1px solid currentColor;border-radius:4px}.demo-link{cursor:default}.demo-link>span{font:10px 'IBM Plex Mono';font-weight:400;opacity:.72}.listing-preview-note{font:10px 'IBM Plex Mono';color:var(--muted)}
 .listing-visual {
   height: 190px;
   position: relative;
