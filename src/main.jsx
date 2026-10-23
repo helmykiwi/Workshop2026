@@ -25,6 +25,11 @@ import {
   signOut,
 } from "firebase/auth";
 import {
+  getDownloadURL,
+  ref as storageRef,
+  uploadBytes,
+} from "firebase/storage";
+import {
   ArrowRight,
   Bell,
   Box,
@@ -52,7 +57,7 @@ import {
   UsersRound,
   X,
 } from "lucide-react";
-import { auth, db } from "./firebase";
+import { auth, db, storage } from "./firebase";
 import "./styles.css";
 
 const seeded = [
@@ -150,12 +155,32 @@ const cats = [
   "Packaging",
 ];
 const regions = [
-  "Kuala Lumpur",
-  "Petaling Jaya",
-  "Subang Jaya",
-  "Shah Alam",
-  "Cheras",
-  "Puchong",
+  "Johor",
+  "Kedah",
+  "Kelantan",
+  "Melaka",
+  "Negeri Sembilan",
+  "Pahang",
+  "Perak",
+  "Perlis",
+  "Pulau Pinang",
+  "Sabah",
+  "Sarawak",
+  "Selangor",
+  "Terengganu",
+  "W.P. Kuala Lumpur",
+  "W.P. Labuan",
+  "W.P. Putrajaya",
+];
+const supplyChoices = [
+  "Fresh produce",
+  "Dry goods",
+  "Packaging",
+  "Cooking oil",
+  "Coffee grounds & by-products",
+  "Industrial materials",
+  "Recyclables",
+  "Other surplus",
 ];
 const nav = [
   ["Command centre", "home", Gauge],
@@ -546,23 +571,73 @@ function Onboarding({ user, profile, complete }) {
       name: profile?.name || user.displayName || "",
       businessName: profile?.businessName || "",
       category: profile?.category || "Food & Beverage",
-      region: profile?.region || "Kuala Lumpur",
+      region: regions.includes(profile?.region) ? profile.region : "Selangor",
       phone: profile?.phone || "",
       lookingFor: profile?.lookingFor || "",
       photoURL: profile?.photoURL || user.photoURL || "",
     })),
+    [selectedSupplies, setSelectedSupplies] = useState(() =>
+      String(profile?.lookingFor || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter((item) => supplyChoices.includes(item)),
+    ),
+    [photoFile, setPhotoFile] = useState(null),
+    [photoPreview, setPhotoPreview] = useState(
+      profile?.photoURL || user.photoURL || "",
+    ),
     [saving, setSaving] = useState(false),
     [error, setError] = useState("");
   const update = (key) => (event) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
+  const toggleSupply = (supply) => {
+    setSelectedSupplies((current) =>
+      current.includes(supply)
+        ? current.filter((item) => item !== supply)
+        : [...current, supply],
+    );
+  };
+  const choosePhoto = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file for your profile photo.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Your profile photo must be 5 MB or smaller.");
+      return;
+    }
+    setError("");
+    setPhotoFile(file);
+    setPhotoPreview(URL.createObjectURL(file));
+  };
   async function submit(event) {
     event.preventDefault();
+    if (!selectedSupplies.length) {
+      setError("Choose at least one type of supply you are looking for.");
+      return;
+    }
     setSaving(true);
     setError("");
     try {
-      await complete(form);
+      let photoURL = form.photoURL;
+      if (photoFile) {
+        const safeName = photoFile.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        const imageRef = storageRef(
+          storage,
+          `profilePhotos/${user.uid}/${Date.now()}-${safeName}`,
+        );
+        await uploadBytes(imageRef, photoFile, { contentType: photoFile.type });
+        photoURL = await getDownloadURL(imageRef);
+      }
+      await complete({
+        ...form,
+        photoURL,
+        lookingFor: selectedSupplies.join(", "),
+      });
     } catch {
-      setError("We could not save your profile. Please try again.");
+      setError("We could not save your profile or photo. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -583,10 +658,28 @@ function Onboarding({ user, profile, complete }) {
           </p>
         </div>
         <section className="onboarding-photo">
-          <Avatar profile={form} />
+          <Avatar profile={{ ...form, photoURL: photoPreview }} />
           <div>
             <b>Profile photo</b>
-            <p>We used the photo linked to your Google account.</p>
+            <p>
+              Upload a clear business or personal photo. JPG, PNG or WebP, up to
+              5 MB.
+            </p>
+            <label className="photo-upload">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={choosePhoto}
+              />
+              <span>
+                {photoFile ? "Choose a different photo" : "Upload your photo"}
+              </span>
+            </label>
+            {photoFile && (
+              <small className="photo-file-name">
+                {photoFile.name} ready to upload
+              </small>
+            )}
           </div>
         </section>
         <div className="onboarding-grid">
@@ -633,23 +726,26 @@ function Onboarding({ user, profile, complete }) {
               placeholder="e.g. 012-345 6789"
             />
           </Field>
-          <Field label="Profile photo URL (optional)">
-            <input
-              type="url"
-              value={form.photoURL}
-              onChange={update("photoURL")}
-              placeholder="Uses your Google photo by default"
-            />
-          </Field>
           <div className="onboarding-wide">
-            <Field label="What supplies are you looking for?">
-              <textarea
-                required
-                value={form.lookingFor}
-                onChange={update("lookingFor")}
-                placeholder="e.g. fresh produce, packaging, cooking oil"
-              />
-            </Field>
+            <fieldset className="supply-picker">
+              <legend>What supplies are you looking for?</legend>
+              <p>Select all that apply so FoodLink can match you properly.</p>
+              <div className="supply-options">
+                {supplyChoices.map((supply) => {
+                  const selected = selectedSupplies.includes(supply);
+                  return (
+                    <label className={selected ? "selected" : ""} key={supply}>
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleSupply(supply)}
+                      />
+                      <span>{supply}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
           </div>
         </div>
         {error && (

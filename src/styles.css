@@ -2075,6 +2075,47 @@ svg {
   font-size: 12px;
   color: var(--muted);
 }
+.photo-upload {
+  align-items: center;
+  border: 1px solid var(--ink);
+  border-radius: 7px;
+  color: var(--ink);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  justify-content: center;
+  margin-top: 7px;
+  min-height: 34px;
+  padding: 0 10px;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease;
+  width: max-content;
+}
+.photo-upload:hover {
+  background: var(--ink);
+  color: var(--white);
+}
+.photo-upload:focus-within {
+  outline: 3px solid #b5d900;
+  outline-offset: 3px;
+}
+.photo-upload input {
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+  position: absolute;
+  width: 1px;
+}
+.photo-file-name {
+  color: var(--muted);
+  font-size: 10px;
+  max-width: 32ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .onboarding-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2082,6 +2123,63 @@ svg {
 }
 .onboarding-wide {
   grid-column: 1/-1;
+}
+.supply-picker {
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+.supply-picker legend {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  margin-bottom: 5px;
+  padding: 0;
+  text-transform: uppercase;
+}
+.supply-picker > p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0 0 11px;
+}
+.supply-options {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.supply-options label {
+  align-items: center;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 600;
+  gap: 10px;
+  min-height: 46px;
+  padding: 8px 12px;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease;
+}
+.supply-options label:hover {
+  border-color: #899882;
+}
+.supply-options label.selected {
+  background: #e8f4cb;
+  border-color: #7b9400;
+}
+.supply-options input {
+  accent-color: var(--ink);
+  height: 16px;
+  margin: 0;
+  width: 16px;
+}
+.supply-options label:focus-within {
+  outline: 3px solid #b5d900;
+  outline-offset: 2px;
 }
 .onboarding-submit {
   margin-top: 9px;
@@ -2121,6 +2219,9 @@ svg {
   }
   .onboarding-wide {
     grid-column: auto;
+  }
+  .supply-options {
+    grid-template-columns: 1fr;
   }
 }
 .auth-methods {
