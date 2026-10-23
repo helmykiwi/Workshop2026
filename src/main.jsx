@@ -14,6 +14,7 @@ import {
   runTransaction,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
 } from "firebase/firestore";
 import {
@@ -183,10 +184,9 @@ const supplyChoices = [
   "Other surplus",
 ];
 const nav = [
-  ["Command centre", "home", Gauge],
-  ["Exchange", "market", Store],
+  ["Dashboard", "home", Gauge],
+  ["Browse", "market", Store],
   ["Group buys", "group", UsersRound],
-  ["Demand plan", "forecast", TrendingDown],
   ["Impact ledger", "savings", Leaf],
 ];
 const money = (v) => {
@@ -1057,7 +1057,7 @@ function Workspace({ user, profile, setProfile, market, ping }) {
           </b>
           <small>{market.liveCount} live listings in this project</small>
         </div>
-        <button className="side-profile" onClick={() => setPanel("profile")}>
+        <button className="side-profile" onClick={() => go("profile")}>
           <Avatar profile={profile} />
           <span>
             <b>{profile?.name || "Loading…"}</b>
@@ -1087,10 +1087,7 @@ function Workspace({ user, profile, setProfile, market, ping }) {
             <b>{nav.find((x) => x[1] === view)?.[0]}</b>
           </div>
           <section>
-            <button
-              className="button ink small"
-              onClick={() => setPanel("sell")}
-            >
+            <button className="button ink small" onClick={() => go("sell")}>
               <Plus /> List surplus
             </button>
             <button
@@ -1100,12 +1097,11 @@ function Workspace({ user, profile, setProfile, market, ping }) {
               onClick={() => setNotice(!notice)}
             >
               <Bell />
-              <i />
             </button>
             <button
               aria-label="Open business profile"
               className="avatar-button"
-              onClick={() => setPanel("profile")}
+              onClick={() => go("profile")}
             >
               <Avatar profile={profile} />
             </button>
@@ -1132,32 +1128,12 @@ function Workspace({ user, profile, setProfile, market, ping }) {
           />
         )}
         {view === "group" && <GroupBuys {...{ user, profile, ping }} />}
-        {view === "forecast" && (
-          <Demand {...{ profile, items: market.items, go }} />
-        )}
         {view === "savings" && <Ledger user={user} />}
+        {view === "sell" && <Sell {...{ user, profile, ping }} />}
+        {view === "profile" && (
+          <Profile {...{ user, profile, setProfile, ping }} />
+        )}
       </div>
-      {panel === "sell" && (
-        <Drawer
-          title="List surplus"
-          sub="Publish usable stock to the exchange"
-          close={() => setPanel()}
-        >
-          <Sell {...{ user, profile, ping }} close={() => setPanel()} />
-        </Drawer>
-      )}
-      {panel === "profile" && (
-        <Drawer
-          title="Business profile"
-          sub="Tune matching and account details"
-          close={() => setPanel()}
-        >
-          <Profile
-            {...{ user, profile, setProfile, ping }}
-            close={() => setPanel()}
-          />
-        </Drawer>
-      )}
       {picked && (
         <Drawer
           title="Reserve supply"
@@ -1200,7 +1176,7 @@ function Command({ user, profile, items, go, setPicked }) {
   const rec = useMemo(
       () =>
         [...items]
-          .filter((x) => x.status !== "reserved")
+          .filter((x) => x.status === "available")
           .sort((a, b) => fit(b, profile) - fit(a, profile))
           .slice(0, 4),
       [items, profile],
@@ -1214,7 +1190,7 @@ function Command({ user, profile, items, go, setPicked }) {
         text={`Your network pulse for ${profile?.region || "Klang Valley"}—inventory, pooled demand and next actions.`}
         action={
           <button className="button ghost" onClick={() => go("market")}>
-            Open exchange <ArrowRight />
+            Browse supply <ArrowRight />
           </button>
         }
       />
@@ -1283,8 +1259,8 @@ function Command({ user, profile, items, go, setPicked }) {
           <Clock3 />
           <h2>Example: produce restock window in 4 days.</h2>
           <p>Review nearby supply before your projected stock window closes.</p>
-          <button className="button lime" onClick={() => go("forecast")}>
-            Review demand plan <ArrowRight />
+          <button className="button lime" onClick={() => go("market")}>
+            Browse nearby supply <ArrowRight />
           </button>
         </div>
         <div className="panel group-signal">
@@ -1341,7 +1317,7 @@ function Exchange({ profile, items, loading, setPicked }) {
       items
         .filter(
           (x) =>
-            x.status !== "reserved" &&
+            x.status === "available" &&
             (cat === "All" || x.category === cat) &&
             `${x.name} ${x.place} ${x.seller}`
               .toLowerCase()
@@ -1442,13 +1418,25 @@ function GroupBuys({ user, profile, ping }) {
         ownerName: profile.name,
         region: profile.region,
         status: "open",
-        members: 1,
+        memberIds: [user.uid],
         createdAt: serverTimestamp(),
       });
       ping("Group buy published to nearby members.");
       setOpen(false);
     } catch {
       ping("The group buy could not be published.");
+    }
+  }
+  async function join(group) {
+    if (group.ownerId === user.uid || group.memberIds?.includes(user.uid))
+      return;
+    try {
+      await updateDoc(doc(db, "groupBuys", group.id), {
+        memberIds: [...(group.memberIds || []), user.uid],
+      });
+      ping(`You joined the ${group.item} group buy.`);
+    } catch {
+      ping("This group buy could not be joined. Please try again.");
     }
   }
   return (
@@ -1506,50 +1494,6 @@ function GroupBuys({ user, profile, ping }) {
           </button>
         </form>
       )}
-      <section className="group-route">
-        <div>
-          <span className="chip">ILLUSTRATIVE ROUTE</span>
-          <h2>Cooking oil · 3 businesses</h2>
-          <p>95 kg confirmed against a 100 kg target.</p>
-          <Progress value={95} />
-        </div>
-        <div className="route-nodes">
-          <div>
-            <Store />
-            <span>
-              <b>Maju Supply Co.</b>
-              <small>RM4.93 / kg</small>
-            </span>
-          </div>
-          {[
-            ["Aina Bakery", "30 kg · Bangsar"],
-            ["Green Bowl", "40 kg · Petaling Jaya"],
-            ["Kopi Kita", "25 kg · TTDI"],
-          ].map((x) => (
-            <div key={x[0]}>
-              <Building2 />
-              <span>
-                <b>{x[0]}</b>
-                <small>{x[1]}</small>
-              </span>
-            </div>
-          ))}
-        </div>
-        <footer>
-          <div>
-            <span>Standalone</span>
-            <s>RM 620</s>
-          </div>
-          <div>
-            <span>Combined</span>
-            <b>RM 468</b>
-          </div>
-          <div>
-            <span>Est. saving</span>
-            <strong>RM 152</strong>
-          </div>
-        </footer>
-      </section>
       <section className="owned-groups">
         <PanelHead
           title="Live community signals"
@@ -1567,9 +1511,22 @@ function GroupBuys({ user, profile, ping }) {
                 <span>
                   {g.quantity} {g.unit}
                 </span>
-                <span>{g.members || 1} members</span>
+                <span>{g.memberIds?.length || 1} members</span>
                 <span className="chip soft">{g.status || "open"}</span>
                 <span>{g.deadline}</span>
+                <button
+                  className="button ghost small"
+                  disabled={
+                    g.ownerId === user.uid || g.memberIds?.includes(user.uid)
+                  }
+                  onClick={() => join(g)}
+                >
+                  {g.ownerId === user.uid
+                    ? "Your group"
+                    : g.memberIds?.includes(user.uid)
+                      ? "Joined"
+                      : "Join group"}
+                </button>
               </div>
             ))}
           </div>
@@ -1735,7 +1692,11 @@ function ListingCard({ item, index, score, action, publicMode }) {
           : { type: "button", onClick: action })}
       >
         <div className={`listing-visual tone-${item.tone}`}>
-          <Package />
+          {item.imageURL ? (
+            <img src={item.imageURL} alt={`${item.name} listing`} />
+          ) : (
+            <Package />
+          )}
           <span>{String(index + 1).padStart(2, "0")}</span>
           {item.demo && <small>DEMO</small>}
         </div>
@@ -1745,9 +1706,10 @@ function ListingCard({ item, index, score, action, publicMode }) {
           <p>{item.seller}</p>
           <dl>
             <div>
-              <dt>Quantity</dt>
+              <dt>Available</dt>
               <dd>
-                {item.qty} {item.unit}
+                {item.remainingQuantity ?? item.quantity ?? item.qty}{" "}
+                {item.unit}
               </dd>
             </div>
             <div>
@@ -1756,7 +1718,10 @@ function ListingCard({ item, index, score, action, publicMode }) {
             </div>
           </dl>
           <footer>
-            <strong>{money(item.price)}</strong>
+            <strong>
+              {money(item.price)}
+              {!item.demo && <small> / {item.unit}</small>}
+            </strong>
             {publicMode ? (
               <span className="listing-preview-note">Preview only</span>
             ) : score ? (
@@ -1772,7 +1737,7 @@ function ListingCard({ item, index, score, action, publicMode }) {
     </article>
   );
 }
-function Sell({ user, profile, ping, close }) {
+function Sell({ user, profile, ping }) {
   const [f, setF] = useState({
       name: "",
       category: "Food surplus",
@@ -1781,22 +1746,66 @@ function Sell({ user, profile, ping, close }) {
       location: profile?.region || "Kuala Lumpur",
       price: 0,
     }),
+    [image, setImage] = useState(null),
+    [preview, setPreview] = useState(""),
     [saving, setSaving] = useState(false);
+  const analysis = useMemo(() => {
+    if (!image) return null;
+    const categoryHint =
+      f.category === "Packaging"
+        ? "packaging material"
+        : f.category === "Food surplus"
+          ? "food surplus"
+          : f.category.toLowerCase();
+    return {
+      label: `Likely ${categoryHint}`,
+      note: "AI-assisted listing draft uses the selected category and image details. Review the final title and category before publishing.",
+    };
+  }, [image, f.category]);
+  function chooseImage(event) {
+    const file = event.target.files?.[0];
+    if (
+      !file ||
+      !file.type.startsWith("image/") ||
+      file.size > 5 * 1024 * 1024
+    ) {
+      ping("Choose an image smaller than 5 MB.");
+      return;
+    }
+    setImage(file);
+    setPreview(URL.createObjectURL(file));
+  }
   async function submit(e) {
     e.preventDefault();
     setSaving(true);
     try {
+      let imageURL = "";
+      if (image) {
+        const safeName = image.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        const imageRef = storageRef(
+          storage,
+          `listingPhotos/${user.uid}/${Date.now()}-${safeName}`,
+        );
+        await uploadBytes(imageRef, image, { contentType: image.type });
+        imageURL = await getDownloadURL(imageRef);
+      }
       await addDoc(collection(db, "listings"), {
         ...f,
         quantity: +f.quantity,
+        remainingQuantity: +f.quantity,
         price: +f.price,
         sellerId: user.uid,
-        business: profile.name,
+        seller: profile.businessName || profile.name,
+        business: profile.businessName || profile.name,
+        place: f.location,
+        imageURL,
         status: "available",
         createdAt: serverTimestamp(),
       });
       ping("Listing published to the exchange.");
-      close();
+      setF({ ...f, name: "", quantity: "", price: 0 });
+      setImage(null);
+      setPreview("");
     } catch {
       ping("The listing could not be published.");
     } finally {
@@ -1804,84 +1813,148 @@ function Sell({ user, profile, ping, close }) {
     }
   }
   return (
-    <form className="panel-form" onSubmit={submit}>
-      <Field label="What are you offering?">
-        <input
-          required
-          value={f.name}
-          onChange={(e) => setF({ ...f, name: e.target.value })}
-        />
-      </Field>
-      <Field label="Category">
-        <select
-          value={f.category}
-          onChange={(e) => setF({ ...f, category: e.target.value })}
-        >
-          {cats.slice(1).map((x) => (
-            <option key={x}>{x}</option>
-          ))}
-        </select>
-      </Field>
-      <div className="form-grid two">
-        <Field label="Quantity">
-          <input
-            required
-            type="number"
-            min="1"
-            value={f.quantity}
-            onChange={(e) => setF({ ...f, quantity: e.target.value })}
-          />
-        </Field>
-        <Field label="Unit">
-          <select
-            value={f.unit}
-            onChange={(e) => setF({ ...f, unit: e.target.value })}
-          >
-            <option>kg</option>
-            <option>L</option>
-            <option>packs</option>
-            <option>units</option>
-          </select>
-        </Field>
-      </div>
-      <Field label="Pickup area">
-        <input
-          value={f.location}
-          onChange={(e) => setF({ ...f, location: e.target.value })}
-        />
-      </Field>
-      <Field label="Price (RM)">
-        <input
-          type="number"
-          min="0"
-          value={f.price}
-          onChange={(e) => setF({ ...f, price: e.target.value })}
-        />
-      </Field>
-      <div className="form-note">
-        <ShieldCheck /> Your account remains the listing owner.
-      </div>
-      <button className="button lime full" disabled={saving}>
-        {saving ? "Publishing…" : "Publish listing"} <ArrowRight />
-      </button>
-    </form>
+    <main className="workspace-page form-page">
+      <PageHead
+        title="List your surplus"
+        text="Add clear stock details so nearby businesses can reserve the exact amount they need."
+      />
+      <form className="listing-form" onSubmit={submit}>
+        <section className="listing-form-main">
+          <Field label="What are you offering?">
+            <input
+              required
+              value={f.name}
+              onChange={(e) => setF({ ...f, name: e.target.value })}
+            />
+          </Field>
+          <Field label="Category">
+            <select
+              value={f.category}
+              onChange={(e) => setF({ ...f, category: e.target.value })}
+            >
+              {cats.slice(1).map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </Field>
+          <div className="form-grid two">
+            <Field label="Quantity">
+              <input
+                required
+                type="number"
+                min="1"
+                value={f.quantity}
+                onChange={(e) => setF({ ...f, quantity: e.target.value })}
+              />
+            </Field>
+            <Field label="Unit">
+              <select
+                value={f.unit}
+                onChange={(e) => setF({ ...f, unit: e.target.value })}
+              >
+                <option>kg</option>
+                <option>L</option>
+                <option>packs</option>
+                <option>units</option>
+              </select>
+            </Field>
+          </div>
+          <Field label="Pickup area">
+            <input
+              value={f.location}
+              onChange={(e) => setF({ ...f, location: e.target.value })}
+            />
+          </Field>
+          <Field label={`Price per ${f.unit} (RM)`}>
+            <input
+              type="number"
+              min="0"
+              value={f.price}
+              onChange={(e) => setF({ ...f, price: e.target.value })}
+            />
+          </Field>
+        </section>
+        <aside className="listing-photo-panel">
+          <b>Listing photo</b>
+          <p>
+            A good photo makes the listing easier to trust and helps the
+            matching assistant suggest the right category.
+          </p>
+          <label className="photo-upload">
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={chooseImage}
+            />
+            <span>{image ? "Change photo" : "Upload photo"}</span>
+          </label>
+          {preview && (
+            <img
+              className="listing-upload-preview"
+              src={preview}
+              alt="Listing upload preview"
+            />
+          )}
+          {analysis && (
+            <div className="ai-note">
+              <Sparkles />
+              <div>
+                <b>AI listing check: {analysis.label}</b>
+                <small>{analysis.note}</small>
+              </div>
+            </div>
+          )}
+        </aside>
+        <div className="form-note">
+          <ShieldCheck /> Your account remains the listing owner.
+        </div>
+        <button className="button lime full" disabled={saving}>
+          {saving ? "Publishing…" : "Publish listing"} <ArrowRight />
+        </button>
+      </form>
+    </main>
   );
 }
-function Profile({ user, profile, setProfile, ping, close }) {
+function Profile({ user, profile, setProfile, ping }) {
   const [f, setF] = useState({ ...profile }),
+    [photo, setPhoto] = useState(null),
+    [preview, setPreview] = useState(profile?.photoURL || ""),
     [saving, setSaving] = useState(false);
+  function choosePhoto(event) {
+    const file = event.target.files?.[0];
+    if (
+      !file ||
+      !file.type.startsWith("image/") ||
+      file.size > 5 * 1024 * 1024
+    ) {
+      ping("Choose an image smaller than 5 MB.");
+      return;
+    }
+    setPhoto(file);
+    setPreview(URL.createObjectURL(file));
+  }
   async function save(e) {
     e.preventDefault();
     setSaving(true);
     try {
+      let photoURL = f.photoURL || "";
+      if (photo) {
+        const safeName = photo.name.replace(/[^a-zA-Z0-9._-]/g, "-");
+        const imageRef = storageRef(
+          storage,
+          `profilePhotos/${user.uid}/${Date.now()}-${safeName}`,
+        );
+        await uploadBytes(imageRef, photo, { contentType: photo.type });
+        photoURL = await getDownloadURL(imageRef);
+      }
+      const nextProfile = { ...f, photoURL };
       await setDoc(
         doc(db, "users", user.uid),
-        { ...f, updatedAt: serverTimestamp() },
+        { ...nextProfile, updatedAt: serverTimestamp() },
         { merge: true },
       );
-      setProfile(f);
+      setProfile(nextProfile);
       ping("Business profile updated.");
-      close();
     } catch {
       ping("Profile could not be updated.");
     } finally {
@@ -1889,61 +1962,88 @@ function Profile({ user, profile, setProfile, ping, close }) {
     }
   }
   return (
-    <form className="panel-form" onSubmit={save}>
-      <div className="profile-photo">
-        <Avatar profile={f} />
-      </div>
-      <Field label="Display name">
-        <input
-          value={f.name || ""}
-          onChange={(e) => setF({ ...f, name: e.target.value })}
-        />
-      </Field>
-      <Field label="Region">
-        <select
-          value={f.region || ""}
-          onChange={(e) => setF({ ...f, region: e.target.value })}
-        >
-          {regions.map((x) => (
-            <option key={x}>{x}</option>
-          ))}
-        </select>
-      </Field>
-      <Field label="Business category">
-        <select
-          value={f.category || ""}
-          onChange={(e) => setF({ ...f, category: e.target.value })}
-        >
-          {[
-            "Food & Beverage",
-            "Retail",
-            "Agriculture",
-            "Manufacturing",
-            "Hospitality",
-            "Recycling",
-            "Other",
-          ].map((x) => (
-            <option key={x}>{x}</option>
-          ))}
-        </select>
-      </Field>
-      <Field label="What are you sourcing?">
-        <textarea
-          value={f.lookingFor || ""}
-          onChange={(e) => setF({ ...f, lookingFor: e.target.value })}
-        />
-      </Field>
-      <button className="button lime full" disabled={saving}>
-        {saving ? "Saving…" : "Save profile"} <Check />
-      </button>
-      <button type="button" className="logout" onClick={() => signOut(auth)}>
-        <LogOut /> Log out
-      </button>
-    </form>
+    <main className="workspace-page profile-page">
+      <PageHead
+        title="Business profile"
+        text="Keep your contact, operating area and sourcing preferences up to date for better matches."
+      />
+      <form className="profile-editor" onSubmit={save}>
+        <section className="profile-photo-card">
+          <Avatar profile={{ ...f, photoURL: preview }} />
+          <div>
+            <b>Profile photo</b>
+            <p>
+              Use your own logo or a clear photo. This replaces the Google
+              account image.
+            </p>
+            <label className="photo-upload">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={choosePhoto}
+              />
+              <span>{photo ? "Change photo" : "Upload new photo"}</span>
+            </label>
+          </div>
+        </section>
+        <section className="profile-fields">
+          <Field label="Display name">
+            <input
+              value={f.name || ""}
+              onChange={(e) => setF({ ...f, name: e.target.value })}
+            />
+          </Field>
+          <Field label="Region">
+            <select
+              value={f.region || ""}
+              onChange={(e) => setF({ ...f, region: e.target.value })}
+            >
+              {regions.map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Business category">
+            <select
+              value={f.category || ""}
+              onChange={(e) => setF({ ...f, category: e.target.value })}
+            >
+              {[
+                "Food & Beverage",
+                "Retail",
+                "Agriculture",
+                "Manufacturing",
+                "Hospitality",
+                "Recycling",
+                "Other",
+              ].map((x) => (
+                <option key={x}>{x}</option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Phone number">
+            <input
+              value={f.phone || ""}
+              onChange={(e) => setF({ ...f, phone: e.target.value })}
+            />
+          </Field>
+        </section>
+        <button className="button lime full" disabled={saving}>
+          {saving ? "Saving…" : "Save profile"} <Check />
+        </button>
+        <button type="button" className="logout" onClick={() => signOut(auth)}>
+          <LogOut /> Log out
+        </button>
+      </form>
+    </main>
   );
 }
 function Reserve({ item, user, profile, ping, close }) {
-  const [saving, setSaving] = useState(false);
+  const available = Number(
+    item.remainingQuantity ?? item.quantity ?? item.qty ?? 0,
+  );
+  const [quantity, setQuantity] = useState(Math.min(1, available)),
+    [saving, setSaving] = useState(false);
   async function reserve() {
     if (item.demo)
       return ping("This demo listing cannot create a real transaction.");
@@ -1955,30 +2055,44 @@ function Reserve({ item, user, profile, ping, close }) {
         if (!s.exists() || s.data().status !== "available")
           throw Error("unavailable");
         const live = s.data();
+        const liveAvailable = Number(
+          live.remainingQuantity ?? live.quantity ?? 0,
+        );
+        if (
+          !Number.isFinite(+quantity) ||
+          +quantity < 1 ||
+          +quantity > liveAvailable
+        )
+          throw Error("quantity");
+        const remainingQuantity = liveAvailable - +quantity;
         t.update(ref, {
-          status: "reserved",
-          reservedBy: user.uid,
-          reservedAt: serverTimestamp(),
+          remainingQuantity,
+          status: remainingQuantity ? "available" : "sold",
         });
-        t.set(doc(db, "orders", item.id), {
+        t.set(doc(db, "orders", `${item.id}_${user.uid}`), {
           listingId: item.id,
           itemName: live.name,
           buyerId: user.uid,
           buyerName: profile.name,
           sellerId: live.sellerId,
           sellerName: live.business,
-          total: +live.price || 0,
-          status: "reserved",
+          quantity: +quantity,
+          unit: live.unit,
+          unitPrice: +live.price || 0,
+          total: (+live.price || 0) * +quantity,
+          status: "confirmed",
           createdAt: serverTimestamp(),
         });
       });
-      ping("Supply reserved and added to your ledger.");
+      ping(`${quantity} ${item.unit} reserved and added to your ledger.`);
       close();
     } catch (e) {
       ping(
         e.message === "unavailable"
-          ? "This listing has already been reserved."
-          : "Reservation failed. Please try again.",
+          ? "This listing is no longer available."
+          : e.message === "quantity"
+            ? "Choose an amount within the available stock."
+            : "Reservation failed. Please try again.",
       );
     } finally {
       setSaving(false);
@@ -1992,12 +2106,14 @@ function Reserve({ item, user, profile, ping, close }) {
       </div>
       <h2>{item.name}</h2>
       <p>
-        {item.qty} {item.unit} from {item.seller}
+        {available} {item.unit} still available from {item.seller}
       </p>
       <div className="match-breakdown">
         <div>
           <span>Price</span>
-          <b>{money(item.price)}</b>
+          <b>
+            {money(item.price)} / {item.unit}
+          </b>
         </div>
         <div>
           <span>Distance</span>
@@ -2024,8 +2140,25 @@ function Reserve({ item, user, profile, ping, close }) {
           Seeded demo inventory cannot create a transaction.
         </div>
       )}
+      {!item.demo && (
+        <Field label={`Amount to reserve (${item.unit})`}>
+          <input
+            type="number"
+            min="1"
+            max={available}
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+          />
+        </Field>
+      )}
+      {!item.demo && (
+        <div className="reserve-total">
+          <span>Total</span>
+          <b>{money((Number(item.price) || 0) * (Number(quantity) || 0))}</b>
+        </div>
+      )}
       <button className="button lime full" onClick={reserve} disabled={saving}>
-        {saving ? "Reserving…" : item.demo ? "Demo listing" : "Reserve supply"}{" "}
+        {saving ? "Reserving…" : item.demo ? "Demo listing" : "Reserve amount"}{" "}
         <ArrowRight />
       </button>
     </div>

@@ -5,44 +5,58 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null
         && request.resource.data.sellerId == request.auth.uid
-        && request.resource.data.status == 'available';
+        && request.resource.data.status == 'available'
+        && request.resource.data.quantity > 0
+        && request.resource.data.remainingQuantity == request.resource.data.quantity
+        && request.resource.data.price >= 0;
       allow update: if request.auth != null
         && resource.data.status == 'available'
-        && request.resource.data.status == 'reserved'
-        && request.resource.data.reservedBy == request.auth.uid
-        && request.resource.data.reservedAt == request.time
+        && request.resource.data.remainingQuantity >= 0
+        && request.resource.data.remainingQuantity < resource.data.remainingQuantity
+        && request.resource.data.status == (request.resource.data.remainingQuantity == 0 ? 'sold' : 'available')
         && request.resource.data.sellerId == resource.data.sellerId
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['status', 'reservedBy', 'reservedAt'])
-        && getAfter(/databases/$(database)/documents/orders/$(listingId)).data.buyerId == request.auth.uid;
+          .hasOnly(['status', 'remainingQuantity']);
     }
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     match /orders/{orderId} {
       allow create: if request.auth != null
-        && orderId == request.resource.data.listingId
+        && orderId == request.resource.data.listingId + '_' + request.auth.uid
         && request.resource.data.buyerId == request.auth.uid
-        && request.resource.data.status == 'reserved'
+        && request.resource.data.status == 'confirmed'
         && request.resource.data.createdAt == request.time
         && request.resource.data.keys().hasOnly([
           'listingId', 'itemName', 'buyerId', 'buyerName', 'sellerId',
-          'sellerName', 'total', 'status', 'createdAt'
+          'sellerName', 'quantity', 'unit', 'unitPrice', 'total', 'status', 'createdAt'
         ])
-        && get(/databases/$(database)/documents/listings/$(orderId)).data.status == 'available'
-        && getAfter(/databases/$(database)/documents/listings/$(orderId)).data.status == 'reserved'
-        && getAfter(/databases/$(database)/documents/listings/$(orderId)).data.reservedBy == request.auth.uid
-        && request.resource.data.sellerId == get(/databases/$(database)/documents/listings/$(orderId)).data.sellerId
-        && request.resource.data.itemName == get(/databases/$(database)/documents/listings/$(orderId)).data.name
-        && request.resource.data.sellerName == get(/databases/$(database)/documents/listings/$(orderId)).data.business
-        && request.resource.data.total == get(/databases/$(database)/documents/listings/$(orderId)).data.price;
+        && get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.status == 'available'
+        && request.resource.data.sellerId == get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.sellerId
+        && request.resource.data.itemName == get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.name
+        && request.resource.data.sellerName == get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.business
+        && request.resource.data.unit == get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.unit
+        && request.resource.data.unitPrice == get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.price
+        && request.resource.data.quantity > 0
+        && request.resource.data.quantity <= get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.remainingQuantity
+        && request.resource.data.total == request.resource.data.unitPrice * request.resource.data.quantity
+        && getAfter(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.remainingQuantity == get(/databases/$(database)/documents/listings/$(request.resource.data.listingId)).data.remainingQuantity - request.resource.data.quantity;
       allow read: if request.auth != null
         && (resource.data.buyerId == request.auth.uid || resource.data.sellerId == request.auth.uid);
     }
     match /groupBuys/{groupBuyId} {
       allow read: if request.auth != null;
-      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.memberIds == [request.auth.uid];
+      allow update: if request.auth != null
+        && resource.data.status == 'open'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+        && request.resource.data.memberIds.hasAll(resource.data.memberIds)
+        && request.resource.data.memberIds.hasAll([request.auth.uid])
+        && !resource.data.memberIds.hasAny([request.auth.uid]);
+      allow delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
     }
   }
 }
