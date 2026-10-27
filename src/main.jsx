@@ -1023,6 +1023,7 @@ function Workspace({ user, profile, setProfile, market, ping }) {
         {view === "market" && (
           <Exchange
             {...{
+              user,
               profile,
               items: market.items,
               loading: market.loading,
@@ -1105,10 +1106,12 @@ function Command({ user, profile, items, go, setPicked }) {
   const rec = useMemo(
       () =>
         [...items]
-          .filter((x) => x.status === "available")
+          .filter(
+            (x) => x.status === "available" && x.sellerId !== user?.uid,
+          )
           .sort((a, b) => fit(b, profile) - fit(a, profile))
           .slice(0, 4),
-      [items, profile],
+      [items, profile, user],
     ),
     spend = orders.reduce((n, o) => n + Number(o.total || 0), 0),
     trips = Math.max(0, orders.length - 1);
@@ -1196,7 +1199,7 @@ function Command({ user, profile, items, go, setPicked }) {
   );
 }
 
-function Exchange({ profile, items, loading, setPicked }) {
+function Exchange({ user, profile, items, loading, setPicked }) {
   const [q, setQ] = useState(""),
     [cat, setCat] = useState("All"),
     [sort, setSort] = useState("fit");
@@ -1265,7 +1268,8 @@ function Exchange({ profile, items, loading, setPicked }) {
               item={x}
               index={i}
               score={fit(x, profile)}
-              action={() => setPicked(x)}
+              owner={x.sellerId === user?.uid}
+              action={() => x.sellerId !== user?.uid && setPicked(x)}
             />
           ))}
         </div>
@@ -1572,7 +1576,7 @@ function Ledger({ user }) {
   );
 }
 
-function ListingCard({ item, index, score, action, publicMode }) {
+function ListingCard({ item, index, score, action, publicMode, owner = false }) {
   const CardContent = publicMode ? "div" : "button";
   return (
     <article className="listing-card">
@@ -1582,7 +1586,7 @@ function ListingCard({ item, index, score, action, publicMode }) {
               className: "listing-card-preview",
               "aria-label": `${item.name} demo preview`,
             }
-          : { type: "button", onClick: action })}
+          : { type: "button", onClick: action, disabled: owner })}
       >
         <div className={`listing-visual tone-${item.tone}`}>
           {item.imageURL ? (
@@ -1616,7 +1620,9 @@ function ListingCard({ item, index, score, action, publicMode }) {
               {money(item.price)}
               {!item.demo && <small> / {item.unit}</small>}
             </strong>
-            {publicMode ? (
+            {owner ? (
+              <span className="owner-listing-label">Your listing</span>
+            ) : publicMode ? (
               <span className="listing-preview-note">Preview only</span>
             ) : score ? (
               <span>
@@ -2011,6 +2017,8 @@ function Reserve({ item, user, profile, ping, close }) {
   async function reserve() {
     if (item.demo)
       return ping("This demo listing cannot create a real transaction.");
+    if (item.sellerId === user.uid)
+      return ping("You cannot reserve your own listing.");
     setSaving(true);
     try {
       await runTransaction(db, async (t) => {
@@ -2019,6 +2027,7 @@ function Reserve({ item, user, profile, ping, close }) {
         if (!s.exists() || s.data().status !== "available")
           throw Error("unavailable");
         const live = s.data();
+        if (live.sellerId === user.uid) throw Error("owner");
         const liveAvailable = Number(
           live.remainingQuantity ?? live.quantity ?? 0,
         );
@@ -2054,6 +2063,8 @@ function Reserve({ item, user, profile, ping, close }) {
       ping(
         e.message === "unavailable"
           ? "This listing is no longer available."
+          : e.message === "owner"
+            ? "You cannot reserve your own listing."
           : e.message === "quantity"
             ? "Choose an amount within the available stock."
             : "Reservation failed. Please try again.",
