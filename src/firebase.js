@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { getStorage } from "firebase/storage";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "firebase/app-check";
 
 const firebaseConfig = {
   projectId: "workshop2026-foodlink",
@@ -12,7 +13,13 @@ const firebaseConfig = {
   messagingSenderId: "109473462352",
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
+// This public site key only proves requests came from the FoodLink web app.
+// Gemini credentials remain behind Firebase AI Logic's protected gateway.
+initializeAppCheck(app, {
+  provider: new ReCaptchaEnterpriseProvider("6Lf9igMuAAAAALor523WYyFe7QP0Fr3yi8WDYWon"),
+  isTokenAutoRefreshEnabled: true,
+});
 export const db = getFirestore(app);
 export const auth = getAuth(app);
 export const storage = getStorage(app);

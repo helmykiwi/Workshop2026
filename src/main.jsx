@@ -61,6 +61,7 @@ import {
   X,
 } from "lucide-react";
 import { auth, db, storage } from "./firebase";
+import { analyseListingImage, analyseSearchImage, recommendSupplies } from "./ai";
 import "./styles.css";
 
 const cats = [
@@ -1061,7 +1062,24 @@ const PageHead = ({ title, text, action }) => (
     {action}
   </div>
 );
-function Command({ profile, go }) {
+function Command({ profile, items, go, setPicked, user }) {
+  const [recommendations, setRecommendations] = useState([]),
+    [recommendationNote, setRecommendationNote] = useState(""),
+    [loadingAI, setLoadingAI] = useState(false),
+    [aiError, setAiError] = useState("");
+  async function getRecommendations() {
+    setLoadingAI(true);
+    setAiError("");
+    try {
+      const result = await recommendSupplies(profile, items.filter((item) => item.sellerId !== user?.uid));
+      setRecommendations(result.recommendations);
+      setRecommendationNote(result.note);
+    } catch {
+      setAiError("AI suggestions are unavailable right now. Please try again.");
+    } finally {
+      setLoadingAI(false);
+    }
+  }
   return (
     <main className="workspace-page">
       <PageHead
@@ -1085,6 +1103,26 @@ function Command({ profile, go }) {
           <ArrowRight />
         </button>
       </section>
+      <section className="ai-assistant-panel" aria-live="polite">
+        <div>
+          <Sparkles />
+          <span><b>AI sourcing helper</b><small>Get suggestions from your business type, area and the live listings.</small></span>
+        </div>
+        <button className="button ghost" onClick={getRecommendations} disabled={loadingAI || !items.length}>
+          {loadingAI ? "Finding matches…" : "Get suggestions"} <ArrowRight />
+        </button>
+        {aiError && <p className="ai-error">{aiError}</p>}
+        {recommendations.length > 0 && (
+          <div className="ai-recommendations">
+            <p>{recommendationNote}</p>
+            {recommendations.map((suggestion) => {
+              const item = items.find((listing) => listing.id === suggestion.id);
+              if (!item) return null;
+              return <button key={item.id} onClick={() => setPicked(item)}><b>{item.name}</b><span>{suggestion.reason}</span><ArrowRight /></button>;
+            })}
+          </div>
+        )}
+      </section>
     </main>
   );
 }
@@ -1092,7 +1130,29 @@ function Command({ profile, go }) {
 function Exchange({ user, items, loading, setPicked }) {
   const [q, setQ] = useState(""),
     [cat, setCat] = useState("All"),
-    [area, setArea] = useState("All");
+    [area, setArea] = useState("All"),
+    [imageSearchBusy, setImageSearchBusy] = useState(false),
+    [imageSearchNote, setImageSearchNote] = useState("");
+  async function searchWithImage(event) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) {
+      setImageSearchNote("Choose a JPG, PNG or WebP image smaller than 5 MB.");
+      return;
+    }
+    setImageSearchBusy(true);
+    setImageSearchNote("");
+    try {
+      const result = await analyseSearchImage(file);
+      setQ(result.query);
+      setCat(result.category);
+      setImageSearchNote(result.summary);
+    } catch {
+      setImageSearchNote("We could not analyse that photo. Try another clear image.");
+    } finally {
+      setImageSearchBusy(false);
+    }
+  }
   const shown = useMemo(
     () =>
       items
@@ -1101,9 +1161,15 @@ function Exchange({ user, items, loading, setPicked }) {
             x.status === "available" &&
             (cat === "All" || x.category === cat) &&
             (area === "All" || normalizeRegion(x.place) === area) &&
-            `${x.name} ${x.place} ${x.seller}`
+            q
               .toLowerCase()
-              .includes(q.toLowerCase()),
+              .split(/[^a-z0-9]+/)
+              .filter((term) => term.length > 1)
+              .every((term) =>
+                `${x.name} ${x.place} ${x.seller} ${x.category}`
+                  .toLowerCase()
+                  .includes(term),
+              ),
         ),
     [items, cat, area, q],
   );
@@ -1129,6 +1195,10 @@ function Exchange({ user, items, loading, setPicked }) {
             placeholder="Search item or seller"
           />
         </label>
+        <label className="button ghost image-search-button">
+          <Sparkles /> {imageSearchBusy ? "Reading photo…" : "Search with photo"}
+          <input type="file" accept="image/png,image/jpeg,image/webp" onChange={searchWithImage} disabled={imageSearchBusy} />
+        </label>
         <label className="select-field filter-select">
           <span>Category</span>
           <select value={cat} onChange={(e) => setCat(e.target.value)}>
@@ -1146,6 +1216,7 @@ function Exchange({ user, items, loading, setPicked }) {
       <p className="browse-helper">
         Use the filters to narrow the listings by category or pickup area.
       </p>
+      {imageSearchNote && <p className="ai-search-note"><Sparkles /> {imageSearchNote}</p>}
       {loading ? (
         <Loading />
       ) : (
@@ -1513,21 +1584,10 @@ function Sell({ user, profile, ping, go }) {
     }),
     [image, setImage] = useState(null),
     [preview, setPreview] = useState(""),
-    [saving, setSaving] = useState(false);
-  const analysis = useMemo(() => {
-    if (!image) return null;
-    const categoryHint =
-      f.category === "Packaging"
-        ? "packaging material"
-        : f.category === "Food surplus"
-          ? "food surplus"
-          : f.category.toLowerCase();
-    return {
-      label: `Likely ${categoryHint}`,
-      note: "AI-assisted listing draft uses the selected category and image details. Review the final title and category before publishing.",
-    };
-  }, [image, f.category]);
-  function chooseImage(event) {
+    [saving, setSaving] = useState(false),
+    [analysis, setAnalysis] = useState(null),
+    [analysing, setAnalysing] = useState(false);
+  async function chooseImage(event) {
     const file = event.target.files?.[0];
     if (
       !file ||
@@ -1539,6 +1599,26 @@ function Sell({ user, profile, ping, go }) {
     }
     setImage(file);
     setPreview(URL.createObjectURL(file));
+    setAnalysis(null);
+    setAnalysing(true);
+    try {
+      const result = await analyseListingImage(file);
+      setAnalysis(result);
+      setF((current) => ({
+        ...current,
+        name: current.name || result.title,
+        category: result.category,
+      }));
+    } catch {
+      setAnalysis({
+        title: "",
+        category: "",
+        description: "AI photo analysis is unavailable. You can still publish this listing manually.",
+        caution: "Please review the details before publishing.",
+      });
+    } finally {
+      setAnalysing(false);
+    }
   }
   async function submit(e) {
     e.preventDefault();
@@ -1650,7 +1730,7 @@ function Sell({ user, profile, ping, go }) {
           <b>Listing photo</b>
           <p>
             A good photo makes the listing easier to trust and helps the
-            matching assistant suggest the right category.
+              AI can suggest a clear title and category after you choose an image.
           </p>
           <label className="photo-upload">
             <input
@@ -1671,11 +1751,12 @@ function Sell({ user, profile, ping, go }) {
             <div className="ai-note">
               <Sparkles />
               <div>
-                <b>AI listing check: {analysis.label}</b>
-                <small>{analysis.note}</small>
+                <b>AI photo suggestion{analysis.category ? `: ${analysis.category}` : ""}</b>
+                <small>{analysis.description} {analysis.caution}</small>
               </div>
             </div>
           )}
+          {analysing && <div className="ai-note"><Sparkles /><div><b>Reading your photo…</b><small>We are checking the image for a draft title and category.</small></div></div>}
         </aside>
         <div className="form-note">
           <ShieldCheck /> Your account remains the listing owner.
