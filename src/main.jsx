@@ -1148,7 +1148,7 @@ function Command({ user, profile, items, go, setPicked }) {
                   <strong>
                     {money(x.price)}
                     <small>
-                      {x.qty} {x.unit}
+                      {x.remainingQuantity ?? x.quantity ?? x.qty} {x.unit}
                     </small>
                   </strong>
                   <ArrowRight />
@@ -1186,8 +1186,8 @@ function Exchange({ profile, items, loading, setPicked }) {
         .sort((a, b) =>
           sort === "price"
             ? a.price - b.price
-            : sort === "distance"
-              ? a.km - b.km
+            : sort === "name"
+              ? String(a.name).localeCompare(String(b.name))
               : fit(b, profile) - fit(a, profile),
         ),
     [items, cat, q, sort, profile],
@@ -1218,8 +1218,8 @@ function Exchange({ profile, items, loading, setPicked }) {
           <span>Sort</span>
           <select value={sort} onChange={(e) => setSort(e.target.value)}>
             <option value="fit">Best profile fit</option>
-            <option value="distance">Nearest first</option>
             <option value="price">Lowest price</option>
+            <option value="name">Name A-Z</option>
           </select>
         </label>
       </div>
@@ -1257,7 +1257,9 @@ function GroupBuys({ user, profile, ping }) {
       item: "Cooking oil",
       quantity: 20,
       unit: "kg",
-      deadline: "2026-11-15",
+      deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10),
     });
   useEffect(
     () =>
@@ -1574,7 +1576,7 @@ function ListingCard({ item, index, score, action, publicMode }) {
             </div>
             <div>
               <dt>Pickup</dt>
-              <dd>{publicMode ? item.place : `${item.km} km`}</dd>
+              <dd>{item.place || item.location || "Ask the seller"}</dd>
             </div>
           </dl>
           <footer>
@@ -2046,12 +2048,14 @@ function Reserve({ item, user, profile, ping, close }) {
           </b>
         </div>
         <div>
-          <span>Distance</span>
-          <b>{item.km} km</b>
+          <span>Available now</span>
+          <b>
+            {available} {item.unit}
+          </b>
         </div>
         <div>
-          <span>Reliability</span>
-          <b>{item.reliability}%</b>
+          <span>Seller</span>
+          <b>{item.seller}</b>
         </div>
         <div>
           <span>Profile fit</span>
