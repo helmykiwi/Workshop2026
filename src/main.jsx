@@ -1046,7 +1046,11 @@ function Workspace({ user, profile, setProfile, market, ping }) {
           <Store />
           <span>Browse</span>
         </button>
-        <button className="list-tab" onClick={() => go("sell")}>
+        <button
+          aria-current={view === "sell" ? "page" : undefined}
+          className={`list-tab ${view === "sell" ? "active" : ""}`}
+          onClick={() => go("sell")}
+        >
           <Plus />
           <span>List</span>
         </button>
