@@ -158,7 +158,7 @@ function useMarketplace() {
         () => {
           setLoading(false);
           setError(
-            "Live inventory is temporarily unavailable. Showing the demo catalogue.",
+            "Live inventory is temporarily unavailable. Please try again shortly.",
           );
         },
       ),
@@ -727,9 +727,9 @@ function Landing({ market, openAuth }) {
               the amount you need. Listing your own surplus is just as easy.
             </p>
             <div className="hero-actions">
-              <span className="button lime demo-action">
+              <a className="button lime" href="#exchange">
                 Browse below <ArrowRight />
-              </span>
+              </a>
               <a className="text-link" href="#exchange">
                 See available supplies <ArrowRight />
               </a>
@@ -1038,11 +1038,11 @@ function Workspace({ user, profile, setProfile, market, ping }) {
         )}
       </div>
       <nav className="mobile-tabbar" aria-label="Main navigation">
-        <button className={view === "home" ? "active" : ""} onClick={() => go("home")}>
+        <button aria-current={view === "home" ? "page" : undefined} className={view === "home" ? "active" : ""} onClick={() => go("home")}>
           <Home />
           <span>Home</span>
         </button>
-        <button className={view === "market" ? "active" : ""} onClick={() => go("market")}>
+        <button aria-current={view === "market" ? "page" : undefined} className={view === "market" ? "active" : ""} onClick={() => go("market")}>
           <Store />
           <span>Browse</span>
         </button>
@@ -1050,11 +1050,11 @@ function Workspace({ user, profile, setProfile, market, ping }) {
           <Plus />
           <span>List</span>
         </button>
-        <button className={view === "group" ? "active" : ""} onClick={() => go("group")}>
+        <button aria-current={view === "group" ? "page" : undefined} className={view === "group" ? "active" : ""} onClick={() => go("group")}>
           <UsersRound />
           <span>Groups</span>
         </button>
-        <button className={view === "profile" ? "active" : ""} onClick={() => go("profile")}>
+        <button aria-current={view === "profile" ? "page" : undefined} className={view === "profile" ? "active" : ""} onClick={() => go("profile")}>
           <UserRound />
           <span>Profile</span>
         </button>
@@ -1586,7 +1586,9 @@ function ListingCard({ item, index, score, action, publicMode }) {
           ) : (
             <Package />
           )}
-          <small className="availability-badge">Available now</small>
+          <small className="availability-badge">
+            {item.status === "available" ? "Available now" : "No longer available"}
+          </small>
         </div>
         <div className="listing-body">
           <span>{item.category}</span>
