@@ -2508,6 +2508,49 @@ svg {
 .search-field { background: #f6f8f8; border-color: #edf0ef; border-radius: 13px; }
 .mobile-tabbar { display: none; }
 
+/* The public experience uses the same friendly marketplace language as the app. */
+.public-header {
+  background: #fff;
+  border-bottom-color: #e8eeea;
+  color: var(--ink);
+}
+.public-header nav a:hover { color: #059669; }
+.hero {
+  background: #f4fbf7;
+  color: var(--ink);
+  min-height: 590px;
+}
+.live-label { color: #198564; }
+.live-label i { background: #10b981; box-shadow: 0 0 0 5px #10b9811f; }
+.hero-copy > p { color: #50645c; }
+.hero-actions .text-link { color: #08785b; }
+.hero-facts { border-top-color: #d9e7df; }
+.hero-facts div { border-right-color: #d9e7df; }
+.hero-facts dt { color: #6e847a; }
+.dispatch {
+  background: #fff;
+  box-shadow: 14px 16px 0 #cbeee0;
+}
+.dispatch > header { border-bottom-color: #d9e7df; }
+.ticker { background: #fff; color: #08785b; }
+.impact-section { background: #d8f6e9; }
+
+@media (max-width: 690px) {
+  .public-header { height: 64px; padding: 0 20px; }
+  .public-header nav { display: none; }
+  .public-header .button { background: #10b981; border-color: #10b981; color: #fff; min-height: 40px; padding: 0 13px; }
+  .hero { display: block; min-height: 0; padding: 44px 22px 38px; }
+  .hero h1 { font-size: 44px; line-height: .98; margin: 22px 0; }
+  .hero-copy > p { font-size: 16px; }
+  .hero-actions { align-items: flex-start; flex-direction: column; gap: 16px; margin: 26px 0 32px; }
+  .hero-actions .button { min-height: 46px; }
+  .hero-facts { display: grid; gap: 18px; grid-template-columns: 1fr 1fr; }
+  .hero-facts div { border: 0; margin: 0; padding: 0; }
+  .hero-facts div:last-child { grid-column: 1 / -1; }
+  .dispatch { margin: 36px 0 0; transform: none; }
+  .ticker { font-size: 10px; overflow: hidden; padding: 16px 20px; white-space: nowrap; }
+}
+
 @media (max-width: 690px) {
   body { background: #f8faf8; }
   .workspace-main { margin-left: 0; padding-bottom: 78px; }

@@ -705,11 +705,11 @@ function Landing({ market, openAuth }) {
   return (
     <div className="site-shell" id="top">
       <header className="public-header">
-        <Brand inverse />
+        <Brand />
         <nav>
-          <a href="#exchange">Exchange</a>
+          <a href="#exchange">Browse</a>
           <a href="#network">How it works</a>
-          <a href="#impact">Impact</a>
+          <a href="#impact">Less waste</a>
         </nav>
         <button className="button lime small" onClick={() => openAuth("login")}>
           Enter network <ArrowRight />
@@ -719,34 +719,33 @@ function Landing({ market, openAuth }) {
         <section className="hero">
           <div className="hero-copy">
             <div className="live-label">
-              <i /> Klang Valley exchange · illustrative demo
+              <i /> Marketplace for Malaysian businesses
             </div>
-            <h1>Turn today’s surplus into tomorrow’s supply.</h1>
+            <h1>Find useful surplus near your business.</h1>
             <p>
-              FoodLink gives Malaysian SMEs one live place to source nearby
-              stock, pool demand and move usable surplus before value
-              disappears.
+              Browse available stock, check the pickup area and reserve only
+              the amount you need. Listing your own surplus is just as easy.
             </p>
             <div className="hero-actions">
               <span className="button lime demo-action">
-                Command centre preview <span>DEMO</span>
+                Browse below <ArrowRight />
               </span>
               <a className="text-link" href="#exchange">
-                Browse the exchange <ArrowRight />
+                See available supplies <ArrowRight />
               </a>
             </div>
             <dl className="hero-facts">
               <div>
                 <dt>One network</dt>
-                <dd>Supply + surplus</dd>
+                <dd>Buy + list stock</dd>
               </div>
               <div>
                 <dt>Local first</dt>
-                <dd>Distance-ranked</dd>
+                <dd>Choose your area</dd>
               </div>
               <div>
                 <dt>Shared route</dt>
-                <dd>Fewer deliveries</dd>
+                <dd>Join a group buy</dd>
               </div>
             </dl>
           </div>
@@ -765,8 +764,8 @@ function Landing({ market, openAuth }) {
         </section>
         <section className="exchange-section" id="exchange">
           <SectionTitle
-            title="A working exchange, not another directory."
-            text="Search what is available, see where it is, and act before the stock window closes."
+            title="Surplus near you"
+            text="Search what is available, see the pickup area, and reserve what your business needs."
             side={
               <div className="exchange-count">
                 <b>{market.liveCount}</b> live listings connected
