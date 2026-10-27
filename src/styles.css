@@ -2486,3 +2486,57 @@ svg {
 .manual-auth-form .button {
   margin-top: 2px;
 }
+
+/* Marketplace-first app shell: familiar touch controls for busy phone users. */
+.workspace { background: #f8faf8; }
+.workspace-header { background: #ffffffed; min-height: 72px; }
+.workspace-location b { align-items: center; color: #08785b; display: flex; font-size: 14px; gap: 5px; }
+.workspace-location b svg { color: #10b981; height: 15px; width: 15px; }
+.browse-helper { color: #64748b; font-size: 13px; margin: -5px 0 20px; }
+.workspace-listings .listing-card > button { border-color: #e6ece8; border-radius: 18px; box-shadow: 0 7px 24px rgba(28, 51, 40, .06); }
+.workspace-listings .listing-card > button:hover { border-color: #8fd5bd; box-shadow: 0 12px 28px rgba(28, 100, 73, .13); transform: translateY(-3px); }
+.workspace-listings .listing-visual { background: #eaf8f2; height: 180px; margin: 10px 10px 0; overflow: hidden; border-radius: 12px; }
+.workspace-listings .listing-visual > svg { color: #08785b; opacity: .58; }
+.availability-badge { background: #0caf7b; border-radius: 7px; color: #fff; font: 700 10px Manrope, sans-serif !important; left: 10px; letter-spacing: 0; padding: 6px 8px; position: absolute; top: 10px; }
+.workspace-listings .listing-body { padding: 15px 17px 17px; }
+.workspace-listings .listing-body > span { color: #718096; font-family: Manrope, sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0; text-transform: none; }
+.workspace-listings .listing-body h3 { font-size: 17px; margin-top: 6px; }
+.workspace-listings .listing-body dl { margin: 14px 0; }
+.workspace-listings .listing-body footer strong { color: #078161; font-size: 19px; }
+.workspace-listings .listing-body footer > svg { background: #e9faf4; border-radius: 50%; color: #079b70; height: 34px; padding: 8px; width: 34px; }
+.filters button.active { background: #10b981; border-color: #10b981; }
+.search-field { background: #f6f8f8; border-color: #edf0ef; border-radius: 13px; }
+.mobile-tabbar { display: none; }
+
+@media (max-width: 690px) {
+  body { background: #f8faf8; }
+  .workspace-main { margin-left: 0; padding-bottom: 78px; }
+  .workspace-header { height: 64px; padding: 0 18px; position: sticky; }
+  .workspace-header > section .button { background: #10b981; border-color: #10b981; border-radius: 12px; color: #fff; min-height: 40px; padding: 0 12px; }
+  .workspace-header > section .avatar-button { display: none; }
+  .workspace-location > span { color: #94a3b8; font-family: Manrope, sans-serif; font-size: 10px !important; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+  .workspace-location b { font-size: 13px; }
+  .workspace-page { padding: 24px 16px 32px; }
+  .page-head { align-items: start; margin-bottom: 20px; }
+  .page-head h1 { font-size: 23px; letter-spacing: -.04em; }
+  .page-head p { font-size: 13px; line-height: 1.55; margin-top: 5px; }
+  .page-head .result-count { display: none; }
+  .exchange-controls { display: block; margin-bottom: 8px; }
+  .search-field { height: 46px; width: 100%; }
+  .select-field { display: none; }
+  .filters { gap: 8px; margin: 8px -16px 0; padding: 5px 16px 12px; }
+  .filters button { background: #fff; border-color: #e3e8e5; border-radius: 10px; font-size: 12px; min-height: 36px; padding: 7px 13px; }
+  .browse-helper { border-top: 1px solid #edf0ef; font-size: 12px; margin: 0 0 16px; padding-top: 14px; }
+  .workspace-listings { gap: 16px; grid-template-columns: 1fr; }
+  .workspace-listings .listing-visual { height: 176px; }
+  .workspace-listings .listing-body h3 { font-size: 16px; }
+  .workspace-listings .listing-body dl { grid-template-columns: 1fr 1fr; }
+  .listing-body dd { font-size: 12px; }
+  .mobile-tabbar { align-items: stretch; background: #fff; border-top: 1px solid #e8eeea; bottom: 0; box-shadow: 0 -7px 20px rgba(17, 60, 42, .06); display: grid; grid-template-columns: repeat(5, 1fr); height: 72px; left: 0; padding: 6px 8px max(7px, env(safe-area-inset-bottom)); position: fixed; right: 0; z-index: 40; }
+  .mobile-tabbar button { align-items: center; background: transparent; border: 0; color: #8a99a1; display: grid; font-size: 9px; font-weight: 700; gap: 2px; justify-items: center; min-width: 0; padding: 0; }
+  .mobile-tabbar button svg { height: 19px; width: 19px; }
+  .mobile-tabbar button.active { color: #059669; }
+  .mobile-tabbar .list-tab { color: #fff; }
+  .mobile-tabbar .list-tab svg { background: #10b981; border-radius: 11px; box-shadow: 0 5px 11px rgba(16, 185, 129, .22); height: 38px; margin-top: -16px; padding: 9px; width: 38px; }
+  .mobile-tabbar .list-tab span { color: #059669; margin-top: -2px; }
+}

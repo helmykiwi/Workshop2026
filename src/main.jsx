@@ -42,6 +42,7 @@ import {
   CircleDollarSign,
   Clock3,
   Gauge,
+  Home,
   Leaf,
   LogOut,
   MapPin,
@@ -997,9 +998,11 @@ function Workspace({ user, profile, setProfile, market, ping }) {
           >
             <Menu />
           </button>
-          <div>
-            <span>FOODLINK OPERATIONS</span>
-            <b>{nav.find((x) => x[1] === view)?.[0]}</b>
+          <div className="workspace-location">
+            <span>Your pickup area</span>
+            <b>
+              <MapPin /> {profile?.region || "Choose an area"}
+            </b>
           </div>
           <section>
             <button className="button ink small" onClick={() => go("sell")}>
@@ -1035,6 +1038,28 @@ function Workspace({ user, profile, setProfile, market, ping }) {
           <Profile {...{ user, profile, setProfile, ping }} />
         )}
       </div>
+      <nav className="mobile-tabbar" aria-label="Main navigation">
+        <button className={view === "home" ? "active" : ""} onClick={() => go("home")}>
+          <Home />
+          <span>Home</span>
+        </button>
+        <button className={view === "market" ? "active" : ""} onClick={() => go("market")}>
+          <Store />
+          <span>Browse</span>
+        </button>
+        <button className="list-tab" onClick={() => go("sell")}>
+          <Plus />
+          <span>List</span>
+        </button>
+        <button className={view === "group" ? "active" : ""} onClick={() => go("group")}>
+          <UsersRound />
+          <span>Groups</span>
+        </button>
+        <button className={view === "profile" ? "active" : ""} onClick={() => go("profile")}>
+          <UserRound />
+          <span>Profile</span>
+        </button>
+      </nav>
       {picked && (
         <Drawer
           title="Reserve supply"
@@ -1195,8 +1220,8 @@ function Exchange({ profile, items, loading, setPicked }) {
   return (
     <main className="workspace-page">
       <PageHead
-        title="Browse supplies"
-        text="Find surplus and materials from other businesses, then reserve the amount you need."
+        title="Surplus near you"
+        text="Tap any item to see the seller, choose how much you need and reserve it."
         action={
           <div className="result-count">
             <b>{shown.length}</b>
@@ -1224,6 +1249,9 @@ function Exchange({ profile, items, loading, setPicked }) {
         </label>
       </div>
       <Filters value={cat} set={setCat} workspace />
+      <p className="browse-helper">
+        Every card shows the current stock and pickup area before you reserve.
+      </p>
       {loading ? (
         <Loading />
       ) : (
@@ -1559,8 +1587,7 @@ function ListingCard({ item, index, score, action, publicMode }) {
           ) : (
             <Package />
           )}
-          <span>{String(index + 1).padStart(2, "0")}</span>
-          {item.demo && <small>DEMO</small>}
+          <small className="availability-badge">Available now</small>
         </div>
         <div className="listing-body">
           <span>{item.category}</span>
@@ -1591,7 +1618,7 @@ function ListingCard({ item, index, score, action, publicMode }) {
                 <Sparkles /> {score}% fit
               </span>
             ) : (
-              <ArrowRight />
+              <Plus aria-label="Reserve this listing" />
             )}
           </footer>
         </div>
