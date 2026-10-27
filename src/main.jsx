@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import {
   addDoc,
   collection,
+  deleteDoc,
   doc,
   getDoc,
   onSnapshot,
@@ -1005,14 +1006,6 @@ function Workspace({ user, profile, setProfile, market, ping }) {
               <Plus /> List surplus
             </button>
             <button
-              aria-label="Network signals"
-              aria-expanded={notice}
-              className="icon-btn notification"
-              onClick={() => setNotice(!notice)}
-            >
-              <Bell />
-            </button>
-            <button
               aria-label="Open business profile"
               className="avatar-button"
               onClick={() => go("profile")}
@@ -1020,12 +1013,6 @@ function Workspace({ user, profile, setProfile, market, ping }) {
               <Avatar profile={profile} />
             </button>
           </section>
-          {notice && (
-            <Notifications
-              region={profile?.region}
-              close={() => setNotice(false)}
-            />
-          )}
         </header>
         {market.error && <div className="workspace-notice">{market.error}</div>}
         {view === "home" && (
@@ -1100,8 +1087,8 @@ function Command({ user, profile, items, go, setPicked }) {
   return (
     <main className="workspace-page">
       <PageHead
-        title={`Good morning, ${profile?.name?.split(" ")[0] || "operator"}.`}
-        text={`Your network pulse for ${profile?.region || "Klang Valley"}—inventory, pooled demand and next actions.`}
+        title={`Welcome back, ${profile?.name?.split(" ")[0] || "there"}.`}
+        text="Use Browse to find supplies, List surplus to offer stock, or Group buys to combine an order with other businesses."
         action={
           <button className="button ghost" onClick={() => go("market")}>
             Browse supply <ArrowRight />
@@ -1111,35 +1098,35 @@ function Command({ user, profile, items, go, setPicked }) {
       <div className="metric-strip">
         <Metric
           icon={CircleDollarSign}
-          label="Estimated savings"
+          label="Your savings"
           value={money(Math.round(spend * 0.15))}
-          note={`${orders.length} account transactions`}
+          note={`${orders.length} confirmed purchases`}
         />
         <Metric
           icon={Route}
-          label="Trips consolidated"
+          label="Combined deliveries"
           value={trips}
-          note="Estimated activity"
+          note="Based on your purchases"
         />
         <Metric
           icon={Leaf}
-          label="CO₂e avoided"
+          label="Estimated impact"
           value={`${(trips * 7.2).toFixed(1)} kg`}
-          note="Illustrative estimate"
+          note="Shown after a purchase"
         />
         <Metric
           icon={Boxes}
-          label="Matched inventory"
+          label="Suggested supplies"
           value={rec.length}
-          note="Ready for review"
+          note="Based on your business profile"
         />
       </div>
       <section className="command-grid">
         <div className="panel wide">
           <PanelHead
-            title="Priority matches"
-            text="Ranked against your profile"
-            side="BEST FOR YOUR PROFILE"
+            title="Supplies you may need"
+            text="Suggestions based on your business profile"
+            side="SUGGESTED FOR YOU"
           />
           <div className="match-list">
             {rec.length ? (
@@ -1176,55 +1163,6 @@ function Command({ user, profile, items, go, setPicked }) {
             )}
           </div>
         </div>
-        <div className="panel next-action">
-          <span className="chip">ACTION WINDOW</span>
-          <Clock3 />
-          <h2>Example: produce restock window in 4 days.</h2>
-          <p>Review nearby supply before your projected stock window closes.</p>
-          <button className="button lime" onClick={() => go("market")}>
-            Browse nearby supply <ArrowRight />
-          </button>
-        </div>
-        <div className="panel group-signal">
-          <PanelHead title="Pooling now" text="Illustrative route" />
-          <strong>95 / 100 kg</strong>
-          <Progress value={95} />
-          <h3>Cooking oil · Klang Valley</h3>
-          <p>Three SMEs, one proposed supplier, one route.</p>
-          <button className="text-link" onClick={() => go("group")}>
-            Open group buys <ArrowRight />
-          </button>
-        </div>
-        <div className="panel activity">
-          <PanelHead
-            title="Network activity"
-            text="Recent illustrative signals"
-            side="ILLUSTRATIVE FEED"
-          />
-          <ul>
-            <li>
-              <i />
-              <span>
-                <b>Tomatoes listed near Cheras</b>
-                <small>80 kg · example timing</small>
-              </span>
-            </li>
-            <li>
-              <i />
-              <span>
-                <b>Packaging pool gained a member</b>
-                <small>3 SMEs · estimated RM210 saving</small>
-              </span>
-            </li>
-            <li>
-              <i />
-              <span>
-                <b>Cooking oil route reached minimum</b>
-                <small>95 kg confirmed</small>
-              </span>
-            </li>
-          </ul>
-        </div>
       </section>
     </main>
   );
@@ -1257,8 +1195,8 @@ function Exchange({ profile, items, loading, setPicked }) {
   return (
     <main className="workspace-page">
       <PageHead
-        title="Exchange"
-        text="Available surplus and local supply ranked for your operating profile."
+        title="Browse supplies"
+        text="Find surplus and materials from other businesses, then reserve the amount you need."
         action={
           <div className="result-count">
             <b>{shown.length}</b>
@@ -1782,10 +1720,14 @@ function Sell({ user, profile, ping }) {
             </Field>
           </div>
           <Field label="Pickup area">
-            <input
+            <select
               value={f.location}
               onChange={(e) => setF({ ...f, location: e.target.value })}
-            />
+            >
+              {regions.map((area) => (
+                <option key={area}>{area}</option>
+              ))}
+            </select>
           </Field>
           <Field label={`Price per ${f.unit} (RM)`}>
             <input
@@ -1841,7 +1783,21 @@ function Profile({ user, profile, setProfile, ping }) {
   const [f, setF] = useState({ ...profile }),
     [photo, setPhoto] = useState(null),
     [preview, setPreview] = useState(profile?.photoURL || ""),
-    [saving, setSaving] = useState(false);
+    [saving, setSaving] = useState(false),
+    [myListings, setMyListings] = useState([]),
+    [removing, setRemoving] = useState("");
+  useEffect(
+    () =>
+      onSnapshot(
+        query(collection(db, "listings"), where("sellerId", "==", user.uid)),
+        (snapshot) =>
+          setMyListings(
+            snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })),
+          ),
+        () => setMyListings([]),
+      ),
+    [user.uid],
+  );
   function choosePhoto(event) {
     const file = event.target.files?.[0];
     if (
@@ -1854,6 +1810,19 @@ function Profile({ user, profile, setProfile, ping }) {
     }
     setPhoto(file);
     setPreview(URL.createObjectURL(file));
+  }
+  async function removeListing(listing) {
+    if (!window.confirm(`Delete “${listing.name}”? This cannot be undone.`))
+      return;
+    setRemoving(listing.id);
+    try {
+      await deleteDoc(doc(db, "listings", listing.id));
+      ping("Listing deleted.");
+    } catch {
+      ping("This listing could not be deleted.");
+    } finally {
+      setRemoving("");
+    }
   }
   async function save(e) {
     e.preventDefault();
@@ -1957,6 +1926,45 @@ function Profile({ user, profile, setProfile, ping }) {
           <LogOut /> Log out
         </button>
       </form>
+      <section className="my-listings">
+        <PanelHead
+          title="My listings"
+          text="Manage surplus that your business has published."
+          side={`${myListings.length} ACTIVE`}
+        />
+        {myListings.length ? (
+          <div className="my-listing-list">
+            {myListings.map((listing) => (
+              <article key={listing.id}>
+                <div>
+                  <b>{listing.name}</b>
+                  <small>
+                    {listing.remainingQuantity ?? listing.quantity}{" "}
+                    {listing.unit} available · {listing.place}
+                  </small>
+                </div>
+                <span>
+                  {money(listing.price)} / {listing.unit}
+                </span>
+                <button
+                  className="text-danger"
+                  type="button"
+                  disabled={removing === listing.id}
+                  onClick={() => removeListing(listing)}
+                >
+                  {removing === listing.id ? "Deleting…" : "Delete listing"}
+                </button>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <Empty
+            icon={Package}
+            title="No listings yet"
+            text="Use “List surplus” when you have stock to share or sell."
+          />
+        )}
+      </section>
     </main>
   );
 }

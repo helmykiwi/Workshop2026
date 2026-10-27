@@ -2308,6 +2308,98 @@ svg {
 .reserve-total b {
   font-size: 20px;
 }
+
+/* Plain-language marketplace refinements */
+.page-head p {
+  max-width: 720px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.metric strong {
+  font-size: clamp(24px, 3vw, 32px);
+}
+.command-grid {
+  grid-template-columns: 1fr;
+}
+.command-grid .panel.wide {
+  grid-row: auto;
+}
+.my-listings {
+  margin-top: 28px;
+  max-width: 980px;
+  background: var(--white);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+}
+.my-listing-list {
+  display: grid;
+  border-top: 1px solid var(--line);
+}
+.my-listing-list article {
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1.5fr 1fr auto;
+  padding: 16px 0;
+}
+.my-listing-list article:last-child {
+  border-bottom: 0;
+}
+.my-listing-list article > div {
+  display: grid;
+  gap: 4px;
+}
+.my-listing-list small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.my-listing-list > article > span {
+  font-size: 12px;
+  font-weight: 800;
+}
+.text-danger {
+  background: transparent;
+  border: 1px solid #c98578;
+  border-radius: 7px;
+  color: #9d3525;
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 40px;
+  padding: 0 12px;
+}
+.text-danger:hover:not(:disabled) {
+  background: #fff0ec;
+}
+.text-danger:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.listing-form-main .field select,
+.listing-form-main .field input {
+  min-height: 52px;
+  font-size: 16px;
+}
+.listing-photo-panel {
+  background: #f6f8f2;
+}
+@media (max-width: 690px) {
+  .my-listings {
+    padding: 18px;
+  }
+  .my-listing-list article {
+    align-items: start;
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .text-danger {
+    width: 100%;
+  }
+  .page-head p {
+    font-size: 14px;
+  }
+}
 @media (max-width: 760px) {
   .listing-form {
     grid-template-columns: 1fr;
