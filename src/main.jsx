@@ -89,6 +89,8 @@ const regions = [
   "W.P. Labuan",
   "W.P. Putrajaya",
 ];
+const normalizeRegion = (value) =>
+  value === "Kuala Lumpur" ? "W.P. Kuala Lumpur" : value;
 const supplyChoices = [
   "Fresh produce",
   "Dry goods",
@@ -102,31 +104,15 @@ const supplyChoices = [
 const nav = [
   ["Dashboard", "home", Gauge],
   ["Browse", "market", Store],
+  ["My listings", "my-listings", Package],
   ["Group buys", "group", UsersRound],
-  ["Impact ledger", "savings", Leaf],
+  ["Transactions", "savings", CircleDollarSign],
 ];
 const money = (v) => {
   const amount = Number(v);
   if (!Number.isFinite(amount)) return "Price on request";
   return amount === 0 ? "Free" : `RM ${amount.toLocaleString("en-MY")}`;
 };
-const fit = (x, p) =>
-  Math.min(
-    99,
-    75 +
-      Math.max(0, 8 - Math.round(x.km || 4)) +
-      Math.round((x.reliability || 90) / 25) +
-      (String(p?.lookingFor || "")
-        .toLowerCase()
-        .split(",")
-        .some(
-          (k) =>
-            k && `${x.name} ${x.category}`.toLowerCase().includes(k.trim()),
-        )
-        ? 8
-        : 0),
-  );
-
 function useMarketplace() {
   const [remote, setRemote] = useState([]),
     [loading, setLoading] = useState(true),
@@ -137,20 +123,20 @@ function useMarketplace() {
         query(collection(db, "listings")),
         (s) => {
           setRemote(
-            s.docs.map((d) => {
-              const x = d.data();
-              return {
-                id: d.id,
-                ...x,
-                qty: x.quantity,
-                place: x.location,
-                seller: x.business,
-                km: x.distance || 3.2,
-                reliability: x.reliability || 95,
-                tone: x.category === "Food surplus" ? "tomato" : "green",
-                demo: false,
-              };
-            }),
+            s.docs
+              .map((d) => {
+                const x = d.data();
+                return {
+                  id: d.id,
+                  ...x,
+                  qty: x.quantity,
+                  place: x.location,
+                  seller: x.business,
+                  tone: x.category === "Food surplus" ? "tomato" : "green",
+                  demo: false,
+                };
+              })
+              .filter((listing) => listing.status === "available"),
           );
           setLoading(false);
           setError("");
@@ -201,16 +187,17 @@ function App() {
           const ref = doc(db, "users", u.uid),
             s = await getDoc(ref),
             base = {
-              name: u.displayName || "FoodLink member",
+              name: u.displayName || "",
               photoURL: u.photoURL || "",
               businessName: "",
-              region: "Kuala Lumpur",
+              region: "W.P. Kuala Lumpur",
               category: "Food & Beverage",
               phone: "",
               lookingFor: "",
               email: u.email || "",
             },
             p = s.exists() ? { ...base, ...s.data() } : base;
+          p.region = normalizeRegion(p.region);
           setProfile(p);
           setNeedsOnboarding(!p.onboarded);
         } catch {
@@ -940,16 +927,13 @@ function Workspace({ user, profile, setProfile, market, ping }) {
   return (
     <div className="workspace">
       <aside className={`sidebar ${menu ? "open" : ""}`}>
-        <div className="sidebar-head">
-          <Brand inverse href="#command-centre" onClick={() => go("home")} />
-          <button
-            aria-label="Close navigation"
-            className="icon-btn close-nav"
-            onClick={() => setMenu(false)}
-          >
-            <X />
-          </button>
-        </div>
+        <button
+          aria-label="Close navigation"
+          className="icon-btn close-nav"
+          onClick={() => setMenu(false)}
+        >
+          <X />
+        </button>
         <nav>
           {nav.map(([label, id, Icon]) => (
             <button
@@ -963,15 +947,6 @@ function Workspace({ user, profile, setProfile, market, ping }) {
             </button>
           ))}
         </nav>
-        <div className="network-signal">
-          <span>MARKETPLACE STATUS</span>
-          <b>{market.liveCount ? "Listings available" : "No listings yet"}</b>
-          <small>
-            {market.liveCount
-              ? `${market.liveCount} active listings`
-              : "Create the first listing to start browsing"}
-          </small>
-        </div>
         <button className="side-profile" onClick={() => go("profile")}>
           <Avatar profile={profile} />
           <span>
@@ -997,12 +972,7 @@ function Workspace({ user, profile, setProfile, market, ping }) {
           >
             <Menu />
           </button>
-          <div className="workspace-location">
-            <span>Your pickup area</span>
-            <b>
-              <MapPin /> {profile?.region || "Choose an area"}
-            </b>
-          </div>
+          <div />
           <section>
             <button className="button ink small" onClick={() => go("sell")}>
               <Plus /> List surplus
@@ -1033,7 +1003,8 @@ function Workspace({ user, profile, setProfile, market, ping }) {
         )}
         {view === "group" && <GroupBuys {...{ user, profile, ping }} />}
         {view === "savings" && <Ledger user={user} />}
-        {view === "sell" && <Sell {...{ user, profile, ping }} />}
+        {view === "sell" && <Sell {...{ user, profile, ping, go }} />}
+        {view === "my-listings" && <MyListings {...{ user, ping, go }} />}
         {view === "profile" && (
           <Profile {...{ user, profile, setProfile, ping }} />
         )}
@@ -1090,119 +1061,38 @@ const PageHead = ({ title, text, action }) => (
     {action}
   </div>
 );
-function Command({ user, profile, items, go, setPicked }) {
-  const [orders, setOrders] = useState([]);
-  useEffect(
-    () =>
-      user
-        ? onSnapshot(
-            query(collection(db, "orders"), where("buyerId", "==", user.uid)),
-            (s) => setOrders(s.docs.map((d) => d.data())),
-            () => {},
-          )
-        : undefined,
-    [user],
-  );
-  const rec = useMemo(
-      () =>
-        [...items]
-          .filter(
-            (x) => x.status === "available" && x.sellerId !== user?.uid,
-          )
-          .sort((a, b) => fit(b, profile) - fit(a, profile))
-          .slice(0, 4),
-      [items, profile, user],
-    ),
-    spend = orders.reduce((n, o) => n + Number(o.total || 0), 0),
-    trips = Math.max(0, orders.length - 1);
+function Command({ profile, go }) {
   return (
     <main className="workspace-page">
       <PageHead
         title={`Welcome back, ${profile?.name?.split(" ")[0] || "there"}.`}
-        text="Use Browse to find supplies, List surplus to offer stock, or Group buys to combine an order with other businesses."
-        action={
-          <button className="button ghost" onClick={() => go("market")}>
-            Browse supply <ArrowRight />
-          </button>
-        }
+        text="Choose what you want to do today."
       />
-      <div className="metric-strip">
-        <Metric
-          icon={CircleDollarSign}
-          label="Your savings"
-          value={money(Math.round(spend * 0.15))}
-          note={`${orders.length} confirmed purchases`}
-        />
-        <Metric
-          icon={Route}
-          label="Combined deliveries"
-          value={trips}
-          note="Based on your purchases"
-        />
-        <Metric
-          icon={Leaf}
-          label="Estimated impact"
-          value={`${(trips * 7.2).toFixed(1)} kg`}
-          note="Shown after a purchase"
-        />
-        <Metric
-          icon={Boxes}
-          label="Suggested supplies"
-          value={rec.length}
-          note="Based on your business profile"
-        />
-      </div>
-      <section className="command-grid">
-        <div className="panel wide">
-          <PanelHead
-            title="Supplies you may need"
-            text="Suggestions based on your business profile"
-            side="SUGGESTED FOR YOU"
-          />
-          <div className="match-list">
-            {rec.length ? (
-              rec.map((x, i) => (
-                <button key={x.id} onClick={() => setPicked(x)}>
-                  <span className={`swatch tone-${x.tone}`}>
-                    <Package />
-                  </span>
-                  <span>
-                    <small>
-                      {x.category} · {x.place}
-                    </small>
-                    <b>{x.name}</b>
-                    <em>{x.seller}</em>
-                  </span>
-                  <strong>
-                    {fit(x, profile)}%<small>FIT</small>
-                  </strong>
-                  <strong>
-                    {money(x.price)}
-                    <small>
-                      {x.remainingQuantity ?? x.quantity ?? x.qty} {x.unit}
-                    </small>
-                  </strong>
-                  <ArrowRight />
-                </button>
-              ))
-            ) : (
-              <Empty
-                icon={Package}
-                title="No matches yet"
-                text="When businesses publish live listings, the best matches for your profile appear here."
-              />
-            )}
-          </div>
-        </div>
+      <section className="dashboard-actions">
+        <button onClick={() => go("market")}>
+          <Store />
+          <span><b>Browse supplies</b><small>Search available stock from other businesses.</small></span>
+          <ArrowRight />
+        </button>
+        <button onClick={() => go("sell")}>
+          <Plus />
+          <span><b>List surplus</b><small>Publish stock that your business wants to sell or share.</small></span>
+          <ArrowRight />
+        </button>
+        <button onClick={() => go("group")}>
+          <UsersRound />
+          <span><b>View group buys</b><small>Join other businesses to combine an order.</small></span>
+          <ArrowRight />
+        </button>
       </section>
     </main>
   );
 }
 
-function Exchange({ user, profile, items, loading, setPicked }) {
+function Exchange({ user, items, loading, setPicked }) {
   const [q, setQ] = useState(""),
     [cat, setCat] = useState("All"),
-    [sort, setSort] = useState("fit");
+    [area, setArea] = useState("All");
   const shown = useMemo(
     () =>
       items
@@ -1210,18 +1100,12 @@ function Exchange({ user, profile, items, loading, setPicked }) {
           (x) =>
             x.status === "available" &&
             (cat === "All" || x.category === cat) &&
+            (area === "All" || normalizeRegion(x.place) === area) &&
             `${x.name} ${x.place} ${x.seller}`
               .toLowerCase()
               .includes(q.toLowerCase()),
-        )
-        .sort((a, b) =>
-          sort === "price"
-            ? a.price - b.price
-            : sort === "name"
-              ? String(a.name).localeCompare(String(b.name))
-              : fit(b, profile) - fit(a, profile),
         ),
-    [items, cat, q, sort, profile],
+    [items, cat, area, q],
   );
   return (
     <main className="workspace-page">
@@ -1242,21 +1126,25 @@ function Exchange({ user, profile, items, loading, setPicked }) {
             aria-label="Search available supply"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search supply, seller or location"
+            placeholder="Search item or seller"
           />
         </label>
-        <label className="select-field">
-          <span>Sort</span>
-          <select value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="fit">Best profile fit</option>
-            <option value="price">Lowest price</option>
-            <option value="name">Name A-Z</option>
+        <label className="select-field filter-select">
+          <span>Category</span>
+          <select value={cat} onChange={(e) => setCat(e.target.value)}>
+            {cats.map((category) => <option key={category}>{category}</option>)}
+          </select>
+        </label>
+        <label className="select-field filter-select">
+          <span>Area</span>
+          <select value={area} onChange={(e) => setArea(e.target.value)}>
+            <option>All</option>
+            {regions.map((region) => <option key={region}>{region}</option>)}
           </select>
         </label>
       </div>
-      <Filters value={cat} set={setCat} workspace />
       <p className="browse-helper">
-        Every card shows the current stock and pickup area before you reserve.
+        Use the filters to narrow the listings by category or pickup area.
       </p>
       {loading ? (
         <Loading />
@@ -1267,7 +1155,6 @@ function Exchange({ user, profile, items, loading, setPicked }) {
               key={x.id}
               item={x}
               index={i}
-              score={fit(x, profile)}
               owner={x.sellerId === user?.uid}
               action={() => x.sellerId !== user?.uid && setPicked(x)}
             />
@@ -1498,45 +1385,23 @@ function Ledger({ user }) {
         : undefined,
     [user],
   );
-  const spend = orders.reduce((n, o) => n + Number(o.total || 0), 0),
-    trips = Math.max(0, orders.length - 1);
+  const spend = orders.reduce((n, o) => n + Number(o.total || 0), 0);
   return (
     <main className="workspace-page">
       <PageHead
-        title="Impact ledger"
-        text="Account-linked activity translated into clear cost, route and emissions estimates."
+        title="Transactions"
+        text="Review purchases and reservations linked to your account."
       />
       {loading ? (
         <Loading />
       ) : orders.length ? (
         <>
-          <section className="ledger-hero">
-            <div>
-              <span>ESTIMATED ACCOUNT SAVING</span>
-              <strong>{money(Math.round(spend * 0.15))}</strong>
-              <p>
-                Modelled at 15% against separate purchasing. This is an
-                estimate, not an audited claim.
-              </p>
-            </div>
-            <div>
-              <Route />
-              <b>{trips}</b>
-              <span>trips consolidated</span>
-            </div>
-          </section>
-          <div className="metric-strip three">
-            <Metric
-              icon={Leaf}
-              label="CO₂e avoided"
-              value={`${(trips * 7.2).toFixed(1)} kg`}
-              note="Route estimate"
-            />
+          <div className="metric-strip two">
             <Metric
               icon={CircleDollarSign}
-              label="Value reserved"
+              label="Total value"
               value={money(spend)}
-              note="Account orders"
+              note="Confirmed reservations"
             />
             <Metric
               icon={Package}
@@ -1567,26 +1432,30 @@ function Ledger({ user }) {
         </>
       ) : (
         <Empty
-          icon={Leaf}
-          title="Your ledger starts with a transaction"
-          text="Reserve live inventory or create a group buy."
+          icon={CircleDollarSign}
+          title="No transactions yet"
+          text="Reserve a listing and it will appear here."
         />
       )}
     </main>
   );
 }
 
-function ListingCard({ item, index, score, action, publicMode, owner = false }) {
-  const CardContent = publicMode ? "div" : "button";
+function ListingCard({ item, index, action, publicMode, owner = false }) {
+  const CardContent = publicMode || owner ? "div" : "button";
   return (
     <article className="listing-card">
       <CardContent
-        {...(publicMode
+        {...(publicMode || owner
           ? {
-              className: "listing-card-preview",
-              "aria-label": `${item.name} demo preview`,
+              className: publicMode
+                ? "listing-card-preview"
+                : "listing-card-owner",
+              "aria-label": owner
+                ? `${item.name}, your listing`
+                : `${item.name} preview`,
             }
-          : { type: "button", onClick: action, disabled: owner })}
+          : { type: "button", onClick: action })}
       >
         <div className={`listing-visual tone-${item.tone}`}>
           {item.imageURL ? (
@@ -1624,10 +1493,6 @@ function ListingCard({ item, index, score, action, publicMode, owner = false }) 
               <span className="owner-listing-label">Your listing</span>
             ) : publicMode ? (
               <span className="listing-preview-note">Preview only</span>
-            ) : score ? (
-              <span>
-                <Sparkles /> {score}% fit
-              </span>
             ) : (
               <Plus aria-label="Reserve this listing" />
             )}
@@ -1637,13 +1502,13 @@ function ListingCard({ item, index, score, action, publicMode, owner = false }) 
     </article>
   );
 }
-function Sell({ user, profile, ping }) {
+function Sell({ user, profile, ping, go }) {
   const [f, setF] = useState({
       name: "",
       category: "Food surplus",
       quantity: "",
       unit: "kg",
-      location: profile?.region || "Kuala Lumpur",
+      location: normalizeRegion(profile?.region) || "W.P. Kuala Lumpur",
       price: 0,
     }),
     [image, setImage] = useState(null),
@@ -1706,6 +1571,7 @@ function Sell({ user, profile, ping }) {
       setF({ ...f, name: "", quantity: "", price: 0 });
       setImage(null);
       setPreview("");
+      go("market");
     } catch {
       ping("The listing could not be published.");
     } finally {
@@ -1773,6 +1639,8 @@ function Sell({ user, profile, ping }) {
             <input
               type="number"
               min="0"
+              step="0.01"
+              inputMode="decimal"
               value={f.price}
               onChange={(e) => setF({ ...f, price: e.target.value })}
             />
@@ -1823,21 +1691,7 @@ function Profile({ user, profile, setProfile, ping }) {
   const [f, setF] = useState({ ...profile }),
     [photo, setPhoto] = useState(null),
     [preview, setPreview] = useState(profile?.photoURL || ""),
-    [saving, setSaving] = useState(false),
-    [myListings, setMyListings] = useState([]),
-    [removing, setRemoving] = useState("");
-  useEffect(
-    () =>
-      onSnapshot(
-        query(collection(db, "listings"), where("sellerId", "==", user.uid)),
-        (snapshot) =>
-          setMyListings(
-            snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })),
-          ),
-        () => setMyListings([]),
-      ),
-    [user.uid],
-  );
+    [saving, setSaving] = useState(false);
   function choosePhoto(event) {
     const file = event.target.files?.[0];
     if (
@@ -1850,19 +1704,6 @@ function Profile({ user, profile, setProfile, ping }) {
     }
     setPhoto(file);
     setPreview(URL.createObjectURL(file));
-  }
-  async function removeListing(listing) {
-    if (!window.confirm(`Delete “${listing.name}”? This cannot be undone.`))
-      return;
-    setRemoving(listing.id);
-    try {
-      await deleteDoc(doc(db, "listings", listing.id));
-      ping("Listing deleted.");
-    } catch {
-      ping("This listing could not be deleted.");
-    } finally {
-      setRemoving("");
-    }
   }
   async function save(e) {
     e.preventDefault();
@@ -1966,12 +1807,50 @@ function Profile({ user, profile, setProfile, ping }) {
           <LogOut /> Log out
         </button>
       </form>
-      <section className="my-listings">
-        <PanelHead
-          title="My listings"
-          text="Manage surplus that your business has published."
-          side={`${myListings.length} ACTIVE`}
-        />
+    </main>
+  );
+}
+
+function MyListings({ user, ping, go }) {
+  const [myListings, setMyListings] = useState([]),
+    [removing, setRemoving] = useState("");
+  useEffect(
+    () =>
+      onSnapshot(
+        query(collection(db, "listings"), where("sellerId", "==", user.uid)),
+        (snapshot) =>
+          setMyListings(
+            snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })),
+          ),
+        () => setMyListings([]),
+      ),
+    [user.uid],
+  );
+  async function removeListing(listing) {
+    if (!window.confirm(`Delete “${listing.name}”? This cannot be undone.`))
+      return;
+    setRemoving(listing.id);
+    try {
+      await deleteDoc(doc(db, "listings", listing.id));
+      ping("Listing deleted.");
+    } catch {
+      ping("This listing could not be deleted.");
+    } finally {
+      setRemoving("");
+    }
+  }
+  return (
+    <main className="workspace-page">
+      <PageHead
+        title="My listings"
+        text="Manage the surplus listings published by your business."
+        action={
+          <button className="button ink" onClick={() => go("sell")}>
+            <Plus /> New listing
+          </button>
+        }
+      />
+      <section className="my-listings standalone-listings">
         {myListings.length ? (
           <div className="my-listing-list">
             {myListings.map((listing) => (
@@ -1979,13 +1858,10 @@ function Profile({ user, profile, setProfile, ping }) {
                 <div>
                   <b>{listing.name}</b>
                   <small>
-                    {listing.remainingQuantity ?? listing.quantity}{" "}
-                    {listing.unit} available · {listing.place}
+                    {listing.remainingQuantity ?? listing.quantity} {listing.unit} available · {listing.place}
                   </small>
                 </div>
-                <span>
-                  {money(listing.price)} / {listing.unit}
-                </span>
+                <span>{money(listing.price)} / {listing.unit}</span>
                 <button
                   className="text-danger"
                   type="button"
@@ -1998,11 +1874,7 @@ function Profile({ user, profile, setProfile, ping }) {
             ))}
           </div>
         ) : (
-          <Empty
-            icon={Package}
-            title="No listings yet"
-            text="Use “List surplus” when you have stock to share or sell."
-          />
+          <Empty icon={Package} title="No listings yet" text="Create a listing when you have stock to share or sell." />
         )}
       </section>
     </main>
@@ -2057,7 +1929,7 @@ function Reserve({ item, user, profile, ping, close }) {
           createdAt: serverTimestamp(),
         });
       });
-      ping(`${quantity} ${item.unit} reserved and added to your ledger.`);
+      ping(`${quantity} ${item.unit} reserved and added to Transactions.`);
       close();
     } catch (e) {
       ping(
@@ -2100,10 +1972,6 @@ function Reserve({ item, user, profile, ping, close }) {
           <span>Seller</span>
           <b>{item.seller}</b>
         </div>
-        <div>
-          <span>Profile fit</span>
-          <b>{fit(item, profile)}%</b>
-        </div>
       </div>
       <div className="pickup">
         <MapPin />
@@ -2124,7 +1992,11 @@ function Reserve({ item, user, profile, ping, close }) {
             min="1"
             max={available}
             value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (next === "") return setQuantity("");
+              setQuantity(Math.min(available, Math.max(1, Number(next))));
+            }}
           />
         </Field>
       )}
@@ -2134,7 +2006,11 @@ function Reserve({ item, user, profile, ping, close }) {
           <b>{money((Number(item.price) || 0) * (Number(quantity) || 0))}</b>
         </div>
       )}
-      <button className="button lime full" onClick={reserve} disabled={saving}>
+      <button
+        className="button lime full"
+        onClick={reserve}
+        disabled={saving || available < 1 || quantity < 1 || quantity > available}
+      >
         {saving ? "Reserving…" : item.demo ? "Demo listing" : "Reserve amount"}{" "}
         <ArrowRight />
       </button>

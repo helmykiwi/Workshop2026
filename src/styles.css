@@ -785,6 +785,11 @@ svg {
   border-radius: 50%;
   object-fit: cover;
 }
+.side-profile .avatar,
+.avatar-button .avatar {
+  flex: 0 0 36px;
+  min-width: 36px;
+}
 .fallback {
   display: grid;
   place-items: center;
@@ -882,6 +887,9 @@ svg {
 }
 .metric-strip.three {
   grid-template-columns: repeat(3, 1fr);
+}
+.metric-strip.two {
+  grid-template-columns: repeat(2, 1fr);
 }
 .metric {
   padding: 18px 20px;
@@ -1722,7 +1730,8 @@ svg {
     font-size: 40px;
   }
   .metric-strip,
-  .metric-strip.three {
+  .metric-strip.three,
+  .metric-strip.two {
     grid-template-columns: 1fr;
   }
   .metric {
@@ -2493,7 +2502,8 @@ svg {
 .workspace-location b { align-items: center; color: #08785b; display: flex; font-size: 14px; gap: 5px; }
 .workspace-location b svg { color: #10b981; height: 15px; width: 15px; }
 .browse-helper { color: #64748b; font-size: 13px; margin: -5px 0 20px; }
-.workspace-listings .listing-card > button { border-color: #e6ece8; border-radius: 18px; box-shadow: 0 7px 24px rgba(28, 51, 40, .06); }
+.workspace-listings .listing-card > button,
+.workspace-listings .listing-card > .listing-card-owner { background: var(--white); border: 1px solid #e6ece8; border-radius: 18px; box-shadow: 0 7px 24px rgba(28, 51, 40, .06); height: 100%; overflow: hidden; text-align: left; width: 100%; }
 .workspace-listings .listing-card > button:hover { border-color: #8fd5bd; box-shadow: 0 12px 28px rgba(28, 100, 73, .13); transform: translateY(-3px); }
 .workspace-listings .listing-card > button:disabled { cursor: default; opacity: 1; }
 .workspace-listings .listing-card > button:disabled:hover { border-color: #e6ece8; box-shadow: 0 7px 24px rgba(28, 51, 40, .06); transform: none; }
@@ -2510,6 +2520,17 @@ svg {
 .filters button.active { background: #10b981; border-color: #10b981; }
 .search-field { background: #f6f8f8; border-color: #edf0ef; border-radius: 13px; }
 .mobile-tabbar { display: none; }
+.dashboard-actions { display: grid; gap: 14px; max-width: 900px; }
+.dashboard-actions button { align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 14px; display: grid; gap: 16px; grid-template-columns: 46px 1fr auto; min-height: 92px; padding: 18px 20px; text-align: left; }
+.dashboard-actions button:hover { border-color: #8fd5bd; }
+.dashboard-actions button > svg:first-child { background: #e9faf4; border-radius: 12px; color: #078161; height: 46px; padding: 12px; width: 46px; }
+.dashboard-actions button > span { display: grid; gap: 4px; }
+.dashboard-actions button b { font-size: 17px; }
+.dashboard-actions button small { color: var(--muted); font-size: 13px; }
+.filter-select { min-width: 180px; }
+.filter-select span { font-weight: 700; }
+.standalone-listings { margin-top: 0; }
+.close-nav { align-self: flex-end; }
 
 /* The public experience uses the same friendly marketplace language as the app. */
 .public-header {
@@ -2567,9 +2588,11 @@ svg {
   .page-head h1 { font-size: 23px; letter-spacing: -.04em; }
   .page-head p { font-size: 13px; line-height: 1.55; margin-top: 5px; }
   .page-head .result-count { display: none; }
-  .exchange-controls { display: block; margin-bottom: 8px; }
-  .search-field { height: 46px; width: 100%; }
+  .exchange-controls { display: grid; gap: 10px; grid-template-columns: 1fr 1fr; margin-bottom: 8px; }
+  .search-field { grid-column: 1 / -1; height: 46px; width: 100%; }
   .select-field { display: none; }
+  .select-field.filter-select { align-items: stretch; display: grid; gap: 5px; min-width: 0; }
+  .select-field.filter-select select { height: 44px; padding: 0 28px 0 10px; width: 100%; }
   .filters { gap: 8px; margin: 8px -16px 0; padding: 5px 16px 12px; }
   .filters button { background: #fff; border-color: #e3e8e5; border-radius: 10px; font-size: 12px; min-height: 44px; padding: 7px 13px; }
   .browse-helper { border-top: 1px solid #edf0ef; font-size: 12px; margin: 0 0 16px; padding-top: 14px; }
@@ -2585,4 +2608,8 @@ svg {
   .mobile-tabbar .list-tab { color: #fff; }
   .mobile-tabbar .list-tab svg { background: #10b981; border-radius: 11px; box-shadow: 0 5px 11px rgba(16, 185, 129, .22); height: 38px; margin-top: -16px; padding: 9px; width: 38px; }
   .mobile-tabbar .list-tab span { color: #059669; margin-top: -2px; }
+  .dashboard-actions button { grid-template-columns: 42px 1fr auto; min-height: 86px; padding: 15px; }
+  .dashboard-actions button > svg:first-child { height: 42px; padding: 11px; width: 42px; }
+  .dashboard-actions button b { font-size: 15px; }
+  .dashboard-actions button small { font-size: 12px; }
 }
