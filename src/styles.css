@@ -2530,6 +2530,24 @@ svg {
 .filter-select { min-width: 180px; }
 .filter-select span { font-weight: 700; }
 .standalone-listings { margin-top: 0; }
+.sales-summary { background: var(--white); border: 1px solid var(--line); border-radius: 14px; display: grid; grid-template-columns: repeat(3, 1fr); margin-bottom: 18px; overflow: hidden; }
+.sales-summary article { display: grid; gap: 5px; padding: 22px; }
+.sales-summary article + article { border-left: 1px solid var(--line); }
+.sales-summary span { color: var(--muted); font-size: 11px; font-weight: 800; text-transform: uppercase; }
+.sales-summary strong { font-size: clamp(27px, 3vw, 38px); letter-spacing: -.035em; }
+.sales-summary small { color: var(--muted); font-size: 11px; }
+.seller-listings .my-listing-list article { grid-template-columns: minmax(180px, 1.5fr) minmax(90px, .55fr) minmax(90px, .55fr) auto; }
+.listing-stat { display: grid; gap: 3px; }
+.listing-stat small { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.listing-stat b { font-size: 14px; }
+.seller-orders { background: var(--white); border: 1px solid var(--line); border-radius: 14px; margin-top: 18px; padding: 24px; }
+.seller-order-table-wrap { border-top: 1px solid var(--line); overflow-x: auto; }
+.seller-order-table { border-collapse: collapse; min-width: 720px; width: 100%; }
+.seller-order-table th,
+.seller-order-table td { border-bottom: 1px solid #e1e5dd; padding: 15px 14px 15px 0; text-align: left; }
+.seller-order-table th { color: var(--muted); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.seller-order-table td { font-size: 13px; }
+.seller-order-table tbody tr:last-child td { border-bottom: 0; }
 .close-nav { align-self: flex-end; }
 
 /* The public experience uses the same friendly marketplace language as the app. */
@@ -2612,4 +2630,11 @@ svg {
   .dashboard-actions button > svg:first-child { height: 42px; padding: 11px; width: 42px; }
   .dashboard-actions button b { font-size: 15px; }
   .dashboard-actions button small { font-size: 12px; }
+  .sales-summary { grid-template-columns: 1fr; }
+  .sales-summary article + article { border-left: 0; border-top: 1px solid var(--line); }
+  .sales-summary article { padding: 18px; }
+  .seller-listings .my-listing-list article { grid-template-columns: 1fr 1fr; }
+  .seller-listings .my-listing-list article > div { grid-column: 1 / -1; }
+  .seller-listings .text-danger { grid-column: 1 / -1; }
+  .seller-orders { padding: 18px; }
 }

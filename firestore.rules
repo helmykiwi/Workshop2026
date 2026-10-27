@@ -24,7 +24,6 @@ service cloud.firestore {
     }
     match /orders/{orderId} {
       allow create: if request.auth != null
-        && orderId == request.resource.data.listingId + '_' + request.auth.uid
         && request.resource.data.buyerId == request.auth.uid
         && request.resource.data.sellerId != request.auth.uid
         && request.resource.data.status == 'confirmed'

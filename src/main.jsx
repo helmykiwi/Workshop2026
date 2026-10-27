@@ -104,7 +104,7 @@ const supplyChoices = [
 const nav = [
   ["Dashboard", "home", Gauge],
   ["Browse", "market", Store],
-  ["My listings", "my-listings", Package],
+  ["Sales", "my-listings", CircleDollarSign],
   ["Group buys", "group", UsersRound],
   ["Transactions", "savings", CircleDollarSign],
 ];
@@ -1813,19 +1813,70 @@ function Profile({ user, profile, setProfile, ping }) {
 
 function MyListings({ user, ping, go }) {
   const [myListings, setMyListings] = useState([]),
+    [loadingListings, setLoadingListings] = useState(true),
+    [sales, setSales] = useState([]),
+    [loadingSales, setLoadingSales] = useState(true),
     [removing, setRemoving] = useState("");
-  useEffect(
-    () =>
-      onSnapshot(
+  useEffect(() => {
+    const stopListings = onSnapshot(
         query(collection(db, "listings"), where("sellerId", "==", user.uid)),
-        (snapshot) =>
+        (snapshot) => {
           setMyListings(
             snapshot.docs.map((entry) => ({ id: entry.id, ...entry.data() })),
-          ),
-        () => setMyListings([]),
+          );
+          setLoadingListings(false);
+        },
+        () => {
+          setMyListings([]);
+          setLoadingListings(false);
+        },
       ),
-    [user.uid],
-  );
+      stopSales = onSnapshot(
+        query(collection(db, "orders"), where("sellerId", "==", user.uid)),
+        (snapshot) => {
+          setSales(
+            snapshot.docs
+              .map((entry) => ({ id: entry.id, ...entry.data() }))
+              .sort(
+                (a, b) =>
+                  Number(b.createdAt?.seconds || 0) -
+                  Number(a.createdAt?.seconds || 0),
+              ),
+          );
+          setLoadingSales(false);
+        },
+        () => {
+          setSales([]);
+          setLoadingSales(false);
+        },
+      );
+    return () => {
+      stopListings();
+      stopSales();
+    };
+  }, [user.uid]);
+  const confirmedSales = sales.filter((sale) => sale.status === "confirmed"),
+    totalSales = confirmedSales.reduce(
+      (sum, sale) => sum + Number(sale.total || 0),
+      0,
+    ),
+    activeListings = myListings.filter(
+      (listing) => listing.status === "available",
+    ).length,
+    listingSales = confirmedSales.reduce((summary, sale) => {
+      const current = summary[sale.listingId] || { quantity: 0, total: 0 };
+      summary[sale.listingId] = {
+        quantity: current.quantity + Number(sale.quantity || 0),
+        total: current.total + Number(sale.total || 0),
+      };
+      return summary;
+    }, {});
+  const saleDate = (value) => {
+    const date = value?.toDate?.();
+    return date
+      ? new Intl.DateTimeFormat("en-MY", { dateStyle: "medium" }).format(date)
+      : "Date unavailable";
+  };
   async function removeListing(listing) {
     if (!window.confirm(`Delete “${listing.name}”? This cannot be undone.`))
       return;
@@ -1842,41 +1893,121 @@ function MyListings({ user, ping, go }) {
   return (
     <main className="workspace-page">
       <PageHead
-        title="My listings"
-        text="Manage the surplus listings published by your business."
+        title="Sales"
+        text="Track confirmed reservations, remaining stock and order value for each listing."
         action={
           <button className="button ink" onClick={() => go("sell")}>
             <Plus /> New listing
           </button>
         }
       />
-      <section className="my-listings standalone-listings">
+      {loadingListings || loadingSales ? (
+        <Loading />
+      ) : (
+        <>
+      <section className="sales-summary" aria-label="Seller order summary">
+        <article>
+          <span>Reserved value</span>
+          <strong>{totalSales ? money(totalSales) : "RM 0"}</strong>
+          <small>Value of confirmed orders, not payment received</small>
+        </article>
+        <article>
+          <span>Confirmed orders</span>
+          <strong>{confirmedSales.length}</strong>
+          <small>Confirmed customer orders</small>
+        </article>
+        <article>
+          <span>Active listings</span>
+          <strong>{activeListings}</strong>
+          <small>Currently visible in Browse</small>
+        </article>
+      </section>
+      <section className="my-listings standalone-listings seller-listings">
+        <PanelHead
+          title="Listing performance"
+          text="Stock remaining and confirmed order value for every listing."
+          side={`${myListings.length} LISTINGS`}
+        />
         {myListings.length ? (
           <div className="my-listing-list">
-            {myListings.map((listing) => (
-              <article key={listing.id}>
-                <div>
-                  <b>{listing.name}</b>
-                  <small>
-                    {listing.remainingQuantity ?? listing.quantity} {listing.unit} available · {listing.place}
-                  </small>
-                </div>
-                <span>{money(listing.price)} / {listing.unit}</span>
-                <button
-                  className="text-danger"
-                  type="button"
-                  disabled={removing === listing.id}
-                  onClick={() => removeListing(listing)}
-                >
-                  {removing === listing.id ? "Deleting…" : "Delete listing"}
-                </button>
-              </article>
-            ))}
+            {myListings.map((listing) => {
+              const result = listingSales[listing.id] || {
+                quantity: 0,
+                total: 0,
+              };
+              return (
+                <article key={listing.id}>
+                  <div>
+                    <b>{listing.name}</b>
+                    <small>
+                      {listing.remainingQuantity ?? listing.quantity} {listing.unit} left · {listing.place}
+                    </small>
+                  </div>
+                  <span className="listing-stat">
+                    <small>Sold</small>
+                    <b>{result.quantity} {listing.unit}</b>
+                  </span>
+                  <span className="listing-stat">
+                    <small>Order value</small>
+                    <b>{result.total ? money(result.total) : "RM 0"}</b>
+                  </span>
+                  <button
+                    className="text-danger"
+                    type="button"
+                    disabled={removing === listing.id}
+                    onClick={() => removeListing(listing)}
+                  >
+                    {removing === listing.id ? "Deleting…" : "Delete listing"}
+                  </button>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <Empty icon={Package} title="No listings yet" text="Create a listing when you have stock to share or sell." />
         )}
       </section>
+      <section className="seller-orders">
+        <PanelHead
+          title="Customer orders"
+          text="Every confirmed reservation made from your listings."
+          side={`${confirmedSales.length} ORDERS`}
+        />
+        {confirmedSales.length ? (
+          <div className="seller-order-table-wrap">
+            <table className="seller-order-table">
+              <thead>
+                <tr>
+                  <th scope="col">Customer</th>
+                  <th scope="col">Item</th>
+                  <th scope="col">Amount</th>
+                  <th scope="col">Order value</th>
+                  <th scope="col">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {confirmedSales.map((sale) => (
+                  <tr key={sale.id}>
+                    <td><b>{sale.buyerName || "Customer"}</b></td>
+                    <td>{sale.itemName}</td>
+                    <td>{sale.quantity} {sale.unit}</td>
+                    <td><b>{money(sale.total)}</b></td>
+                    <td>{saleDate(sale.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <Empty
+            icon={CircleDollarSign}
+            title="No confirmed orders yet"
+            text="When someone reserves one of your listings, the order and its value will appear here."
+          />
+        )}
+      </section>
+        </>
+      )}
     </main>
   );
 }
@@ -1914,7 +2045,7 @@ function Reserve({ item, user, profile, ping, close }) {
           remainingQuantity,
           status: remainingQuantity ? "available" : "sold",
         });
-        t.set(doc(db, "orders", `${item.id}_${user.uid}`), {
+        t.set(doc(collection(db, "orders")), {
           listingId: item.id,
           itemName: live.name,
           buyerId: user.uid,
